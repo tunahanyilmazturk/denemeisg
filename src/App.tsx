@@ -16,6 +16,7 @@ import { NewIncidentWizard } from './pages/NewIncidentWizard';
 import { Trainings } from './pages/Trainings';
 import { PPEPage } from './pages/PPE';
 import { RisksPage } from './pages/Risks';
+import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { useStore } from './store/useStore';
 
@@ -35,6 +36,7 @@ const AnimatedRoutes = () => {
           <Route path="trainings" element={<Trainings />} />
           <Route path="ppe" element={<PPEPage />} />
           <Route path="risks" element={<RisksPage />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

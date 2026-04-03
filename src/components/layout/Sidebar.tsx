@@ -59,30 +59,47 @@ interface TooltipProps {
 
 const Tooltip: React.FC<TooltipProps> = ({ children, content, show }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const childRef = React.useRef<HTMLDivElement>(null);
   
   if (!show) return <>{children}</>;
   
+  const handleMouseEnter = () => {
+    if (childRef.current) {
+      const rect = childRef.current.getBoundingClientRect();
+      setPosition({ x: rect.right + 12, y: rect.top + rect.height / 2 });
+    }
+    setIsVisible(true);
+  };
+  
   return (
-    <div 
-      className="relative"
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      {children}
+    <>
+      <div 
+        ref={childRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        {children}
+      </div>
       <AnimatePresence>
         {isVisible && (
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm rounded-lg whitespace-nowrap z-50 shadow-lg"
+            className="fixed px-3 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm rounded-lg whitespace-nowrap z-[9999] shadow-lg pointer-events-none"
+            style={{ 
+              left: position.x, 
+              top: position.y,
+              transform: 'translateY(-50%)'
+            }}
           >
             {content}
             <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-900 dark:bg-white rotate-45" />
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 };
 
