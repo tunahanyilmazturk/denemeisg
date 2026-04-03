@@ -6,7 +6,7 @@ import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2, Filter, X, Building2 } from 'lucide-react';
+import { Plus, Download, FileText, Search, Edit2, Trash2, Filter, X, Building2, MapPin } from 'lucide-react';
 import { Company } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -16,6 +16,7 @@ export const Companies = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCompany, setCurrentCompany] = useState<Partial<Company>>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [newLocation, setNewLocation] = useState('');
 
   const {
     paginatedData,
@@ -82,6 +83,25 @@ export const Companies = () => {
   const openEditModal = (company: Company) => {
     setCurrentCompany(company);
     setIsModalOpen(true);
+  };
+
+  const addLocation = () => {
+    const locations = currentCompany.locations || [];
+    if (newLocation.trim() && !locations.includes(newLocation.trim())) {
+      setCurrentCompany({
+        ...currentCompany,
+        locations: [...locations, newLocation.trim()]
+      });
+      setNewLocation('');
+    }
+  };
+
+  const removeLocation = (locationToRemove: string) => {
+    const locations = currentCompany.locations || [];
+    setCurrentCompany({
+      ...currentCompany,
+      locations: locations.filter(loc => loc !== locationToRemove)
+    });
   };
 
   const handleExportPDF = () => {
@@ -313,6 +333,45 @@ export const Companies = () => {
               <label className="text-sm font-medium">Adres</label>
               <Input required value={currentCompany.address || ''} onChange={e => setCurrentCompany({...currentCompany, address: e.target.value})} />
             </div>
+            
+            {/* Locations Management */}
+            <div className="space-y-3 pt-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Lokasyonlar
+              </label>
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Yeni lokasyon ekle (örn: A Blok, Şantiye)" 
+                  value={newLocation}
+                  onChange={e => setNewLocation(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addLocation())}
+                />
+                <Button type="button" variant="secondary" onClick={addLocation}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {currentCompany.locations && currentCompany.locations.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {currentCompany.locations.map((loc, idx) => (
+                    <span 
+                      key={idx} 
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300"
+                    >
+                      {loc}
+                      <button
+                        type="button"
+                        onClick={() => removeLocation(loc)}
+                        className="ml-1 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="pt-4 flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>İptal</Button>
               <Button type="submit">Kaydet</Button>

@@ -15,8 +15,11 @@ export interface Company {
   phone: string;
   email: string;
   address: string;
+  locations?: string[];
   createdAt: string;
 }
+
+export type PersonnelClass = 'A' | 'B' | 'C';
 
 export interface Personnel {
   id: string;
@@ -24,6 +27,7 @@ export interface Personnel {
   lastName: string;
   tcNo: string;
   role: string;
+  class?: PersonnelClass;
   assignedCompanyId?: string;
   phone: string;
   email: string;

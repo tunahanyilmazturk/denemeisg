@@ -7,7 +7,7 @@ import { DataTable } from '../components/ui/DataTable';
 import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
 import { Plus, Download, FileText, Search, Edit2, Trash2, Filter, X } from 'lucide-react';
-import { Personnel } from '../types';
+import { Personnel, PersonnelClass } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
 
@@ -49,12 +49,14 @@ export const PersonnelPage = () => {
     
     const matchesCompany = !filters.companyId || filters.companyId === 'all' || p.assignedCompanyId === filters.companyId;
     const matchesRole = !filters.role || filters.role === 'all' || p.role === filters.role;
+    const matchesClass = !filters.class || filters.class === 'all' || p.class === filters.class;
     
-    return matchesSearch && matchesCompany && matchesRole;
+    return matchesSearch && matchesCompany && matchesRole && matchesClass;
   });
 
-  // Get unique roles for filter
+  // Get unique roles and classes for filter
   const uniqueRoles = [...new Set(personnel.map(p => p.role))];
+  const uniqueClasses: PersonnelClass[] = ['A', 'B', 'C'];
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,11 +87,12 @@ export const PersonnelPage = () => {
   };
 
   const handleExportPDF = () => {
-    const columns = ['Ad Soyad', 'TC No', 'Görev', 'Atanan Firma', 'Telefon'];
+    const columns = ['Ad Soyad', 'TC No', 'Görev', 'Sınıf', 'Atanan Firma', 'Telefon'];
     const data = filteredPersonnel.map(p => [
       `${p.firstName} ${p.lastName}`, 
       p.tcNo, 
-      p.role, 
+      p.role,
+      p.class || '-',
       companies.find(c => c.id === p.assignedCompanyId)?.name || 'Atanmadı',
       p.phone
     ]);
@@ -103,6 +106,7 @@ export const PersonnelPage = () => {
       'Soyad': p.lastName,
       'TC No': p.tcNo,
       'Görev': p.role,
+      'Sınıf': p.class || '-',
       'Atanan Firma': companies.find(c => c.id === p.assignedCompanyId)?.name || 'Atanmadı',
       'Telefon': p.phone,
       'E-posta': p.email,
@@ -131,9 +135,16 @@ export const PersonnelPage = () => {
       header: 'Görev',
       sortable: true,
       render: (p: Personnel) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-          {p.role}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+            {p.role}
+          </span>
+          {p.class && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+              {p.class} Sınıfı
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -185,7 +196,7 @@ export const PersonnelPage = () => {
     },
   ];
 
-  const hasActiveFilters = searchTerm || filters.companyId || filters.role;
+  const hasActiveFilters = searchTerm || filters.companyId || filters.role || filters.class;
 
   return (
     <PageTransition>
@@ -277,6 +288,21 @@ export const PersonnelPage = () => {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Sınıf
+                </label>
+                <select
+                  value={filters.class || 'all'}
+                  onChange={(e) => setFilter('class', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Sınıflar</option>
+                  {uniqueClasses.map(cls => (
+                    <option key={cls} value={cls}>{cls} Sınıfı</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -324,6 +350,21 @@ export const PersonnelPage = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Görev</label>
                 <Input required value={currentPerson.role || ''} onChange={e => setCurrentPerson({...currentPerson, role: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Sınıf</label>
+                <select 
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                  value={currentPerson.class || ''}
+                  onChange={e => setCurrentPerson({...currentPerson, class: e.target.value as PersonnelClass || undefined})}
+                >
+                  <option value="">Seçiniz</option>
+                  <option value="A">A Sınıfı</option>
+                  <option value="B">B Sınıfı</option>
+                  <option value="C">C Sınıfı</option>
+                </select>
               </div>
             </div>
             <div className="space-y-2">
