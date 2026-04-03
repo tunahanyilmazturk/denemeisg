@@ -188,15 +188,15 @@ export const Dashboard = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-4">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">Sistem genel bakış ve özet istatistikler.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">Sistem genel bakış ve özet istatistikler.</p>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {quickActions.map((action, idx) => (
             <motion.div
               key={action.label}
@@ -220,7 +220,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, idx) => (
             <StatCard 
               label={stat.label}
@@ -236,10 +236,10 @@ export const Dashboard = () => {
         </div>
 
         {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Incident Severity Distribution */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-2 mb-6">
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-5">
               <PieChartIcon className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Şiddet Dağılımı</h2>
             </div>
@@ -281,8 +281,8 @@ export const Dashboard = () => {
           </div>
 
           {/* Incident Trends */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-2 mb-6">
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-5">
               <BarChart3 className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Aylık Olay Trendi</h2>
             </div>
@@ -312,8 +312,8 @@ export const Dashboard = () => {
           </div>
 
           {/* Risk Distribution */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-2 mb-6">
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-5">
               <ShieldAlert className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Risk Dağılımı</h2>
             </div>
@@ -356,10 +356,10 @@ export const Dashboard = () => {
         </div>
 
         {/* Charts Row 2 & Lists */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Incident Status */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-2 mb-6">
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-5">
               <ListTodo className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Durumları</h2>
             </div>
@@ -384,8 +384,8 @@ export const Dashboard = () => {
           </div>
 
           {/* Training Completion */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-2 mb-6">
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-5">
               <GraduationCap className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Eğitim Durumları</h2>
             </div>
@@ -427,10 +427,10 @@ export const Dashboard = () => {
         </div>
 
         {/* Lists Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Upcoming Trainings */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-slate-500" />
                 <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Yaklaşan Eğitimler</h2>

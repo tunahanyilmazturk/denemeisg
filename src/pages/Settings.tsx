@@ -117,11 +117,11 @@ export const Settings = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="space-y-4 max-w-full mx-0">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Sistem Ayarları</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">Uygulama tercihlerinizi ve sistem yapılandırmasını yönetin.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">Uygulama tercihlerinizi ve sistem yapılandırmasını yönetin.</p>
         </div>
 
         <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">

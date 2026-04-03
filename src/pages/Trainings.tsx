@@ -222,12 +222,12 @@ export const Trainings = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Eğitimler</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">İSG eğitimlerini ve katılımcıları takip edin.</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">İSG eğitimlerini ve katılımcıları takip edin.</p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="secondary" onClick={handleExportExcel} className="gap-2">

@@ -49,6 +49,7 @@ interface AppState {
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   // ...existing actions
+  addCompany: (company: Company) => void;
   updateCompany: (company: Company) => void;
   deleteCompany: (id: string) => void;
   addPersonnel: (person: Personnel) => void;

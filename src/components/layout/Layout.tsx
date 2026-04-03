@@ -13,8 +13,8 @@ export const Layout = () => {
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <Header />
-          <main className="flex-1 overflow-y-auto p-6 lg:p-8 scroll-smooth">
-            <div className="mx-auto max-w-7xl">
+          <main className="flex-1 overflow-y-auto p-4 scroll-smooth">
+            <div className="mx-auto max-w-full">
               <Outlet />
             </div>
           </main>
