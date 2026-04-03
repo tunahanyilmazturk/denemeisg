@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { 
   Building2, Users, AlertTriangle, CheckCircle, GraduationCap, HardHat, ShieldAlert, 
   TrendingUp, TrendingDown, Calendar, Activity, FileWarning, Clock, CheckCircle2,
-  ArrowRight, BarChart3, PieChart as PieChartIcon, ListTodo
+  ArrowRight, BarChart3, PieChart as PieChartIcon, ListTodo, Download, Filter,
+  Sparkles, Target, Zap, TrendingUpIcon, Bell, ArrowUpRight, ArrowDownRight,
+  Lightbulb, AlertTriangle as Warning, Info, MoreHorizontal, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -12,6 +14,8 @@ import {
 import { PageTransition } from '../components/layout/PageTransition';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { exportToPDF } from '../utils/exportUtils';
+import toast from 'react-hot-toast';
 
 const StatCard = ({ 
   label, 
@@ -66,6 +70,7 @@ const StatCard = ({
 
 export const Dashboard = () => {
   const { companies, personnel, incidents, trainings, ppes, risks, isDarkMode } = useStore();
+  const [dateRange, setDateRange] = useState(30); // days
 
   // Calculate statistics
   const openIncidents = incidents.filter(i => i.status !== 'Kapalı').length;
@@ -186,13 +191,202 @@ export const Dashboard = () => {
 
   const chartTextColor = isDarkMode ? '#9ca3af' : '#4b5563';
 
+  // AI Insights
+  const insights = useMemo(() => {
+    const items = [];
+    
+    if (highRisks > 0) {
+      items.push({
+        type: 'warning',
+        icon: ShieldAlert,
+        title: `${highRisks} Yüksek Risk Tespit Edildi`,
+        description: 'Öncelikli risk değerlendirmesi ve önlem alınması gerekiyor.',
+        action: '/risks'
+      });
+    }
+    
+    if (openIncidents > 3) {
+      items.push({
+        type: 'danger',
+        icon: AlertTriangle,
+        title: `${openIncidents} Açık Olay Var`,
+        description: 'Çözüm bekleyen olay sayısı yüksek. İnceleme başlatılması önerilir.',
+        action: '/incidents'
+      });
+    }
+    
+    const completionRate = trainings.length > 0 ? (completedTrainings / trainings.length) * 100 : 0;
+    if (completionRate < 50 && trainings.length > 0) {
+      items.push({
+        type: 'info',
+        icon: GraduationCap,
+        title: `Eğitim Tamamlama Oranı %${completionRate.toFixed(0)}`,
+        description: 'Eğitim tamamlama oranı düşük. Hatırlatmalar gönderilmesi önerilir.',
+        action: '/trainings'
+      });
+    }
+    
+    const expiringPPEs = ppes.filter(p => p.status === 'Aktif').length;
+    if (expiringPPEs > 0) {
+      items.push({
+        type: 'warning',
+        icon: HardHat,
+        title: `${expiringPPEs} KKD Kontrol Gerekiyor`,
+        description: 'KKD zimmetlerinin periyodik kontrolü ve yenilenmesi gerekiyor.',
+        action: '/ppe'
+      });
+    }
+    
+    return items.slice(0, 4);
+  }, [highRisks, openIncidents, trainings, completedTrainings, ppes]);
+
+  // KPI Data
+  const kpiData = useMemo(() => [
+    {
+      label: 'Eğitim Tamamlama',
+      current: completedTrainings,
+      target: trainings.length,
+      percentage: trainings.length > 0 ? (completedTrainings / trainings.length) * 100 : 0,
+      color: 'bg-emerald-500'
+    },
+    {
+      label: 'Olay Çözüm Oranı',
+      current: incidents.filter(i => i.status === 'Kapalı').length,
+      target: incidents.length,
+      percentage: incidents.length > 0 ? (incidents.filter(i => i.status === 'Kapalı').length / incidents.length) * 100 : 0,
+      color: 'bg-blue-500'
+    },
+    {
+      label: 'Risk Giderme',
+      current: risks.filter(r => r.status === 'Giderildi').length,
+      target: risks.length,
+      percentage: risks.length > 0 ? (risks.filter(r => r.status === 'Giderildi').length / risks.length) * 100 : 0,
+      color: 'bg-indigo-500'
+    }
+  ], [completedTrainings, trainings, incidents, risks]);
+
+  const handleExportDashboard = () => {
+    const data = {
+      'Toplam Firma': companies.length,
+      'Toplam Personel': personnel.length,
+      'Açık Olaylar': openIncidents,
+      'Aktif KKD': activePPEs,
+      'Yüksek Riskler': highRisks,
+      'Tamamlanan Eğitim': completedTrainings,
+    };
+    exportToPDF('Dashboard Raporu', ['Metrik', 'Değer'], Object.entries(data).map(([k, v]) => [k, String(v)]), 'dashboard-raporu');
+    toast.success('Dashboard raporu indirildi');
+  };
+
+  // Company comparison data
+  const companyComparisonData = useMemo(() => {
+    return companies.map(company => {
+      const companyPersonnel = personnel.filter(p => p.assignedCompanyId === company.id).length;
+      const companyIncidents = incidents.filter(i => i.companyId === company.id).length;
+      const companyTrainings = trainings.filter(t => 
+        t.participants.some(pid => 
+          personnel.find(p => p.id === pid)?.assignedCompanyId === company.id
+        )
+      ).length;
+      return {
+        name: company.name.length > 15 ? company.name.substring(0, 15) + '...' : company.name,
+        personnel: companyPersonnel,
+        incidents: companyIncidents,
+        trainings: companyTrainings,
+      };
+    }).filter(c => c.personnel > 0 || c.incidents > 0).slice(0, 5);
+  }, [companies, personnel, incidents, trainings]);
+
   return (
     <PageTransition>
       <div className="space-y-4">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">Sistem genel bakış ve özet istatistikler.</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">Sistem genel bakış ve özet istatistikler.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <select 
+              value={dateRange}
+              onChange={(e) => setDateRange(Number(e.target.value))}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value={7}>Son 7 gün</option>
+              <option value={30}>Son 30 gün</option>
+              <option value={90}>Son 90 gün</option>
+              <option value={365}>Son 1 yıl</option>
+            </select>
+            <button
+              onClick={handleExportDashboard}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors text-sm font-medium"
+            >
+              <Download className="h-4 w-4" />
+              PDF İndir
+            </button>
+          </div>
+        </div>
+
+        {/* AI Insights */}
+        {insights.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border border-amber-200 dark:border-amber-800/50 p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">AI Insights & Öneriler</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {insights.map((insight, idx) => (
+                <Link
+                  key={idx}
+                  to={insight.action}
+                  className="flex items-start gap-3 p-4 bg-white/60 dark:bg-slate-800/60 rounded-xl hover:shadow-md transition-all"
+                >
+                  <div className={`p-2 rounded-lg ${
+                    insight.type === 'danger' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                    insight.type === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                    'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    <insight.icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-900 dark:text-white text-sm">{insight.title}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{insight.description}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* KPI Progress Bars */}
+        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-slate-500" />
+            <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Performans KPI'ları</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {kpiData.map((kpi, idx) => (
+              <div key={idx} className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{kpi.label}</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">%{kpi.percentage.toFixed(0)}</span>
+                </div>
+                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${kpi.percentage}%` }}
+                    transition={{ duration: 1, delay: idx * 0.2 }}
+                    className={`h-full ${kpi.color} rounded-full`}
+                  />
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{kpi.current} / {kpi.target} tamamlandı</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Quick Actions */}
@@ -518,6 +712,40 @@ export const Dashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Company Comparison Chart */}
+        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="flex items-center gap-2 mb-5">
+            <Building2 className="h-5 w-5 text-slate-500" />
+            <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Firma Karşılaştırması</h2>
+          </div>
+          <div className="h-[250px] w-full">
+            {companyComparisonData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={companyComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#1e293b' : '#e2e8f0'} vertical={false} />
+                  <XAxis dataKey="name" stroke={chartTextColor} tick={{ fill: chartTextColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke={chartTextColor} tick={{ fill: chartTextColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                      borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                      borderRadius: '0.75rem',
+                    }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                  <Bar dataKey="personnel" name="Personel" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="incidents" name="Olay" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="trainings" name="Eğitim" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <p>Firma verisi bulunmuyor</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
