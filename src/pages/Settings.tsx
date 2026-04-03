@@ -98,7 +98,7 @@ export const Settings = () => {
     label: string; 
     description?: string;
   }) => (
-    <div className="flex items-center justify-between p-5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/30">
+    <div className="flex items-center justify-between p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
       <div>
         <p className="font-medium text-slate-900 dark:text-white">{label}</p>
         {description && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
@@ -124,10 +124,10 @@ export const Settings = () => {
           <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">Uygulama tercihlerinizi ve sistem yapılandırmasını yönetin.</p>
         </div>
 
-        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="flex flex-col lg:flex-row min-h-[600px]">
             {/* Settings Sidebar */}
-            <div className="w-full lg:w-72 bg-slate-50/50 dark:bg-slate-800/30 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-200/60 dark:border-slate-800/60">
+            <div className="w-full lg:w-72 bg-slate-50 dark:bg-slate-800/50 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-700">
               <nav className="space-y-2">
                 {tabs.map((tab) => (
                   <button
@@ -145,8 +145,8 @@ export const Settings = () => {
                 ))}
               </nav>
 
-              <div className="mt-8 pt-6 border-t border-slate-200/60 dark:border-slate-800/60">
-                <div className="px-4 py-3 rounded-xl bg-slate-100/50 dark:bg-slate-800/50">
+              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800">
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Sistem Bilgisi</p>
                   <p className="text-sm text-slate-700 dark:text-slate-300">Versiyon: 1.0.0</p>
                   <p className="text-sm text-slate-700 dark:text-slate-300">Son Güncelleme: {new Date().toLocaleDateString('tr-TR')}</p>

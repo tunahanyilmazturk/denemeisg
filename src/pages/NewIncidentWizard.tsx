@@ -70,7 +70,7 @@ export const NewIncidentWizard = () => {
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Olay Türü <span className="text-red-500">*</span></label>
                   <select 
                     required
-                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-800 dark:bg-[#09090b]/50 dark:text-slate-50 transition-all duration-200"
+                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
                     value={formData.type || 'İş Kazası'}
                     onChange={e => setFormData({...formData, type: e.target.value as IncidentType})}
                   >
@@ -172,7 +172,7 @@ export const NewIncidentWizard = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Şiddet Derecesi</label>
                   <select 
-                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-800 dark:bg-[#09090b]/50 dark:text-slate-50 transition-all duration-200"
+                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
                     value={formData.severity || 'Orta'}
                     onChange={e => setFormData({...formData, severity: e.target.value as Severity})}
                   >
@@ -185,7 +185,7 @@ export const NewIncidentWizard = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Başlangıç Durumu</label>
                   <select 
-                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-800 dark:bg-[#09090b]/50 dark:text-slate-50 transition-all duration-200"
+                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
                     value={formData.status || 'Açık'}
                     onChange={e => setFormData({...formData, status: e.target.value as IncidentStatus})}
                   >
@@ -313,7 +313,7 @@ export const NewIncidentWizard = () => {
         </div>
 
         {/* Stepper */}
-        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 md:p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
           <div className="mb-10">
             <div className="flex items-center justify-between relative">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
