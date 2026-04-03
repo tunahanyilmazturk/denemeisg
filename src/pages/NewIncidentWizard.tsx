@@ -11,9 +11,10 @@ import toast from 'react-hot-toast';
 const steps = [
   { id: 1, title: 'Firma & Temel Bilgiler' },
   { id: 2, title: 'Olay Detayları' },
-  { id: 3, title: 'Revde Tedavi Bilgileri' },
-  { id: 4, title: 'Önlem Önerileri' },
-  { id: 5, title: 'Gözden Geçirme' }
+  { id: 3, title: 'Kazalı Bilgileri' },
+  { id: 4, title: 'Revde Tedavi Bilgileri' },
+  { id: 5, title: 'Önlem Önerileri' },
+  { id: 6, title: 'Gözden Geçirme' }
 ];
 
 export const NewIncidentWizard = () => {
@@ -53,7 +54,7 @@ export const NewIncidentWizard = () => {
   }, [formData.date, formData.companyId, formData.type, companies, isTitleEdited]);
 
   const handleNext = () => {
-    if (currentStep < 5) setCurrentStep(currentStep + 1);
+    if (currentStep < 6) setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
@@ -200,19 +201,6 @@ export const NewIncidentWizard = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Şiddet Derecesi</label>
-                  <select 
-                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
-                    value={formData.severity || 'Orta'}
-                    onChange={e => setFormData({...formData, severity: e.target.value as Severity})}
-                  >
-                    <option value="Düşük">Düşük (Ramak Kala / İlk Yardım)</option>
-                    <option value="Orta">Orta (Tıbbi Müdahale)</option>
-                    <option value="Yüksek">Yüksek (İş Günü Kaybı)</option>
-                    <option value="Kritik">Kritik (Uzuv Kaybı / Ölüm)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Başlangıç Durumu</label>
                   <select 
                     className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
@@ -225,29 +213,139 @@ export const NewIncidentWizard = () => {
                   </select>
                 </div>
               </div>
+            </div>
+          </div>
+        );
+      case 3:
+        // Kazalı Bilgileri - Injured person information
+        const employmentTypes: ('Tam zamanlı' | 'Yarı zamanlı' | 'Ofis' | 'Geçici' | 'Taşeron' | 'Stajyer')[] = 
+          ['Tam zamanlı', 'Yarı zamanlı', 'Ofis', 'Geçici', 'Taşeron', 'Stajyer'];
+
+        const toggleEmploymentType = (type: 'Tam zamanlı' | 'Yarı zamanlı' | 'Ofis' | 'Geçici' | 'Taşeron' | 'Stajyer') => {
+          const current = formData.injuredPersonEmploymentType || [];
+          if (current.includes(type)) {
+            setFormData({...formData, injuredPersonEmploymentType: current.filter(t => t !== type)});
+          } else {
+            setFormData({...formData, injuredPersonEmploymentType: [...current, type]});
+          }
+        };
+
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Kazalı Bilgileri</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 -mt-4 mb-4">Yaralanan personelin bilgilerini giriniz.</p>
+            
+            <div className="space-y-5">
+              {/* Row 1: Name, Process Description */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Etkilenen Uzuv (Opsiyonel)</label>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Adı, Soyadı</label>
                   <Input 
-                    value={formData.affectedBodyPart || ''} 
-                    onChange={e => setFormData({...formData, affectedBodyPart: e.target.value})} 
-                    placeholder="Örn: Sağ el, Sol ayak bileği" 
+                    value={formData.injuredPersonName || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonName: e.target.value})} 
+                    placeholder="Örn: Ahmet Yılmaz" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Kök Neden Tahmini (Opsiyonel)</label>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Proses Tanımı</label>
                   <Input 
-                    value={formData.rootCause || ''} 
-                    onChange={e => setFormData({...formData, rootCause: e.target.value})} 
-                    placeholder="Örn: KKD Kullanılmaması, Dikkatsizlik" 
+                    value={formData.injuredPersonProcessDesc || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonProcessDesc: e.target.value})} 
+                    placeholder="Örn: Üretim hattı operatörü" 
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Department/Company, Birth Date, Employee ID */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bölüm / Firma</label>
+                  <Input 
+                    value={formData.injuredPersonDepartment || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonDepartment: e.target.value})} 
+                    placeholder="Örn: Üretim / ABC Ltd. Şti." 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Doğum Tarihi</label>
+                  <Input 
+                    type="date"
+                    value={formData.injuredPersonBirthDate || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonBirthDate: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Sicil No</label>
+                  <Input 
+                    value={formData.injuredPersonEmployeeId || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonEmployeeId: e.target.value})} 
+                    placeholder="Örn: 12345" 
+                  />
+                </div>
+              </div>
+
+              {/* Employment Type Checkboxes */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Çalışma Tipi</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {employmentTypes.map((type) => (
+                    <label key={type} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={(formData.injuredPersonEmploymentType || []).includes(type)}
+                        onChange={() => toggleEmploymentType(type)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Experience and Gender Row */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Toplam Tecrübe Süresi</label>
+                  <Input 
+                    value={formData.injuredPersonTotalExperience || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonTotalExperience: e.target.value})} 
+                    placeholder="Örn: 5 yıl" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bu Görevdeki Tecrübe</label>
+                  <Input 
+                    value={formData.injuredPersonTaskExperience || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonTaskExperience: e.target.value})} 
+                    placeholder="Örn: 2 yıl" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Cinsiyet</label>
+                  <select 
+                    className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
+                    value={formData.injuredPersonGender || ''}
+                    onChange={e => setFormData({...formData, injuredPersonGender: e.target.value as 'Erkek' | 'Kadın'})}
+                  >
+                    <option value="">Seçiniz</option>
+                    <option value="Erkek">Erkek</option>
+                    <option value="Kadın">Kadın</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Vardiya</label>
+                  <Input 
+                    value={formData.injuredPersonShift || ''} 
+                    onChange={e => setFormData({...formData, injuredPersonShift: e.target.value})} 
+                    placeholder="Örn: Sabah / Akşam / Gece" 
                   />
                 </div>
               </div>
             </div>
           </div>
         );
-      case 3:
-        // Medical treatment information step
+      case 4:
+        // Revde Tedavi Bilgileri - Medical treatment information step
         const injuryTypes: InjuryType[] = ['Kırık-Çıkık', 'Çatlak', 'Ezilme', 'Sıyrık', 'Kesik', 'Travma', 'Bayılma', 'Yanık', 'Çapak kaçması', 'Yumuşak doku zedelenmesi', 'Kas zedelenmesi/yırtılması', 'Batma/Delinme', 'Burkulma', 'Kas kasılması', 'Zehirlenme', 'Diğer'];
         const severityLevels: SeverityLevel[] = ['Önemsiz', '0-1 Gün', '1-2 Gün', '3 Gün ve Sonrası', 'Minör', 'Ciddi/Majör'];
         const bodyParts: BodyPart[] = ['Baş', 'Yüz', 'Göz', 'El-El Bileği', 'Parmak', 'Kol-Omuz', 'Boyun', 'Ayak-Ayak Bileği', 'Bacak', 'Bel', 'İç organlar', 'Göğüs-karın', 'Omurga', 'Diğer'];
@@ -596,7 +694,7 @@ export const NewIncidentWizard = () => {
             </div>
           </div>
         );
-      case 5:
+      case 6:
         const company = companies.find(c => c.id === formData.companyId);
         const person = personnel.find(p => p.id === formData.personnelId);
         
@@ -630,16 +728,8 @@ export const NewIncidentWizard = () => {
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Şiddet & Durum</h3>
+                  <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Durum</h3>
                   <div className="mt-1 flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      formData.severity === 'Kritik' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      formData.severity === 'Yüksek' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                      formData.severity === 'Orta' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                      'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                    }`}>
-                      {formData.severity}
-                    </span>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                       formData.status === 'Kapalı' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                       formData.status === 'İnceleniyor' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
@@ -649,18 +739,6 @@ export const NewIncidentWizard = () => {
                     </span>
                   </div>
                 </div>
-                {formData.affectedBodyPart && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Etkilenen Uzuv</h3>
-                    <p className="mt-1 text-base text-slate-900 dark:text-white">{formData.affectedBodyPart}</p>
-                  </div>
-                )}
-                {formData.rootCause && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">Kök Neden Tahmini</h3>
-                    <p className="mt-1 text-base text-slate-900 dark:text-white">{formData.rootCause}</p>
-                  </div>
-                )}
               </div>
               
               <div className="pt-4 border-t border-slate-200/60 dark:border-slate-700/60">
@@ -669,6 +747,83 @@ export const NewIncidentWizard = () => {
                   {formData.description || '-'}
                 </p>
               </div>
+
+              {/* Kazalı Bilgileri */}
+              {(formData.injuredPersonName || formData.injuredPersonDepartment || formData.injuredPersonBirthDate) && (
+                <div className="pt-4 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Kazalı Bilgileri</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                    {formData.injuredPersonName && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Adı, Soyadı</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonName}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonDepartment && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Bölüm / Firma</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonDepartment}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonBirthDate && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Doğum Tarihi</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">
+                          {new Date(formData.injuredPersonBirthDate).toLocaleDateString('tr-TR')}
+                        </p>
+                      </div>
+                    )}
+                    {formData.injuredPersonEmployeeId && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Sicil No</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonEmployeeId}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonProcessDesc && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Proses Tanımı</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonProcessDesc}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonEmploymentType && formData.injuredPersonEmploymentType.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Çalışma Tipi</h4>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {formData.injuredPersonEmploymentType.map((type, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-full text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                              {type}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {formData.injuredPersonTotalExperience && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Toplam Tecrübe</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonTotalExperience}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonTaskExperience && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Bu Görevdeki Tecrübe</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonTaskExperience}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonGender && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Cinsiyet</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonGender}</p>
+                      </div>
+                    )}
+                    {formData.injuredPersonShift && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Vardiya</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.injuredPersonShift}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Medical Treatment Info */}
               {(formData.injuryTypes?.length || formData.affectedBodyParts?.length || formData.treatmentInfo || formData.severityLevel || formData.hospitalReferral) && (
@@ -891,7 +1046,7 @@ export const NewIncidentWizard = () => {
                   )}
                 </Button>
                 
-                {currentStep < 5 ? (
+                {currentStep < 6 ? (
                   <Button onClick={handleNext}>
                     İleri <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>

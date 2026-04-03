@@ -69,6 +69,18 @@ export interface Incident {
   measuresEquipment?: string[];
   measuresEnvironment?: string[];
   measuresMethod?: string[];
+  // Kazalı Bilgileri
+  injuredPersonName?: string;
+  injuredPersonDepartment?: string;
+  injuredPersonCompany?: string;
+  injuredPersonBirthDate?: string;
+  injuredPersonEmployeeId?: string;
+  injuredPersonProcessDesc?: string;
+  injuredPersonEmploymentType?: ('Tam zamanlı' | 'Yarı zamanlı' | 'Ofis' | 'Geçici' | 'Taşeron' | 'Stajyer')[];
+  injuredPersonTotalExperience?: string;
+  injuredPersonTaskExperience?: string;
+  injuredPersonGender?: 'Erkek' | 'Kadın';
+  injuredPersonShift?: string;
   createdAt: string;
 }
 
