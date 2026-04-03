@@ -36,6 +36,12 @@ export interface Personnel {
 
 export type IncidentType = 'İş Kazası' | 'Ramak Kala' | 'Meslek Hastalığı' | 'Çevre Olayı' | 'Maddi Hasarlı Olay';
 
+export type InjuryType = 'Kırık-Çıkık' | 'Çatlak' | 'Ezilme' | 'Sıyrık' | 'Kesik' | 'Travma' | 'Bayılma' | 'Yanık' | 'Çapak kaçması' | 'Yumuşak doku zedelenmesi' | 'Kas zedelenmesi/yırtılması' | 'Batma/Delinme' | 'Burkulma' | 'Kas kasılması' | 'Zehirlenme' | 'Diğer';
+
+export type SeverityLevel = 'Önemsiz' | '0-1 Gün' | '1-2 Gün' | '3 Gün ve Sonrası' | 'Minör' | 'Ciddi/Majör';
+
+export type BodyPart = 'Baş' | 'Yüz' | 'Göz' | 'El-El Bileği' | 'Parmak' | 'Kol-Omuz' | 'Boyun' | 'Ayak-Ayak Bileği' | 'Bacak' | 'Bel' | 'İç organlar' | 'Göğüs-karın' | 'Omurga' | 'Diğer';
+
 export interface Incident {
   id: string;
   title: string;
@@ -49,6 +55,15 @@ export interface Incident {
   type?: IncidentType;
   affectedBodyPart?: string;
   rootCause?: string;
+  // Revde Tedavi Bilgileri
+  injuryTypes?: InjuryType[];
+  severityLevel?: SeverityLevel;
+  treatmentInfo?: string;
+  daysOff?: number;
+  restrictedWorkDays?: number;
+  returnToWorkDate?: string;
+  hospitalReferral?: boolean;
+  affectedBodyParts?: BodyPart[];
   createdAt: string;
 }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Incident, Severity, IncidentStatus, IncidentType } from '../types';
+import { Incident, Severity, IncidentStatus, IncidentType, InjuryType, SeverityLevel, BodyPart } from '../types';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -11,7 +11,8 @@ import toast from 'react-hot-toast';
 const steps = [
   { id: 1, title: 'Firma & Temel Bilgiler' },
   { id: 2, title: 'Olay Detayları' },
-  { id: 3, title: 'Gözden Geçirme' }
+  { id: 3, title: 'Revde Tedavi Bilgileri' },
+  { id: 4, title: 'Gözden Geçirme' }
 ];
 
 export const NewIncidentWizard = () => {
@@ -59,7 +60,7 @@ export const NewIncidentWizard = () => {
   };
 
   const handleNext = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
+    if (currentStep < 4) setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
@@ -253,6 +254,150 @@ export const NewIncidentWizard = () => {
           </div>
         );
       case 3:
+        // Medical treatment information step
+        const injuryTypes: InjuryType[] = ['Kırık-Çıkık', 'Çatlak', 'Ezilme', 'Sıyrık', 'Kesik', 'Travma', 'Bayılma', 'Yanık', 'Çapak kaçması', 'Yumuşak doku zedelenmesi', 'Kas zedelenmesi/yırtılması', 'Batma/Delinme', 'Burkulma', 'Kas kasılması', 'Zehirlenme', 'Diğer'];
+        const severityLevels: SeverityLevel[] = ['Önemsiz', '0-1 Gün', '1-2 Gün', '3 Gün ve Sonrası', 'Minör', 'Ciddi/Majör'];
+        const bodyParts: BodyPart[] = ['Baş', 'Yüz', 'Göz', 'El-El Bileği', 'Parmak', 'Kol-Omuz', 'Boyun', 'Ayak-Ayak Bileği', 'Bacak', 'Bel', 'İç organlar', 'Göğüs-karın', 'Omurga', 'Diğer'];
+
+        const toggleInjuryType = (type: InjuryType) => {
+          const current = formData.injuryTypes || [];
+          if (current.includes(type)) {
+            setFormData({...formData, injuryTypes: current.filter(t => t !== type)});
+          } else {
+            setFormData({...formData, injuryTypes: [...current, type]});
+          }
+        };
+
+        const toggleBodyPart = (part: BodyPart) => {
+          const current = formData.affectedBodyParts || [];
+          if (current.includes(part)) {
+            setFormData({...formData, affectedBodyParts: current.filter(p => p !== part)});
+          } else {
+            setFormData({...formData, affectedBodyParts: [...current, part]});
+          }
+        };
+
+        return (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Revde Tedavi Bilgileri</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 -mt-4 mb-4">Olaylar ve ramak kaldılar için bu kısım doldurulmayacaktır.</p>
+            
+            <div className="space-y-6">
+              {/* Injury Types */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Yaralanma Türü</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {injuryTypes.map((type) => (
+                    <label key={type} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={(formData.injuryTypes || []).includes(type)}
+                        onChange={() => toggleInjuryType(type)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Body Parts */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Yaralanan Organ</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {bodyParts.map((part) => (
+                    <label key={part} className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={(formData.affectedBodyParts || []).includes(part)}
+                        onChange={() => toggleBodyPart(part)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{part}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Severity Level */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Ciddiyet / İş Günü Kaybı</label>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  {severityLevels.map((level) => (
+                    <label key={level} className="flex flex-col items-center gap-1 p-2 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <input
+                        type="radio"
+                        name="severityLevel"
+                        checked={formData.severityLevel === level}
+                        onChange={() => setFormData({...formData, severityLevel: level})}
+                        className="rounded-full border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-xs text-center text-slate-700 dark:text-slate-300">{level}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Treatment Info */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Tedavi / Tanı</label>
+                <textarea
+                  className="flex min-h-[80px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
+                  value={formData.treatmentInfo || ''}
+                  onChange={e => setFormData({...formData, treatmentInfo: e.target.value})}
+                  placeholder="Uygulanan tedavi ve tanı bilgileri..."
+                />
+              </div>
+
+              {/* Days off and work restrictions */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Çalışılamayan Gün Sayısı</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.daysOff || ''}
+                    onChange={e => setFormData({...formData, daysOff: parseInt(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Kısıtlı Çalışma Günü</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.restrictedWorkDays || ''}
+                    onChange={e => setFormData({...formData, restrictedWorkDays: parseInt(e.target.value) || 0})}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">İşbaşı Tarihi</label>
+                  <Input
+                    type="date"
+                    value={formData.returnToWorkDate || ''}
+                    onChange={e => setFormData({...formData, returnToWorkDate: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              {/* Hospital Referral */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <input
+                  type="checkbox"
+                  id="hospitalReferral"
+                  checked={formData.hospitalReferral || false}
+                  onChange={e => setFormData({...formData, hospitalReferral: e.target.checked})}
+                  className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-5 w-5"
+                />
+                <label htmlFor="hospitalReferral" className="text-sm font-medium text-amber-800 dark:text-amber-400">
+                  Hastaneye Sevk Edildi
+                </label>
+              </div>
+            </div>
+          </div>
+        );
+      case 4:
         const company = companies.find(c => c.id === formData.companyId);
         const person = personnel.find(p => p.id === formData.personnelId);
         
@@ -325,6 +470,74 @@ export const NewIncidentWizard = () => {
                   {formData.description || '-'}
                 </p>
               </div>
+
+              {/* Medical Treatment Info */}
+              {(formData.injuryTypes?.length || formData.affectedBodyParts?.length || formData.treatmentInfo || formData.severityLevel || formData.hospitalReferral) && (
+                <div className="pt-4 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Revde Tedavi Bilgileri</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                    {formData.injuryTypes && formData.injuryTypes.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Yaralanma Türü</h4>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {formData.injuryTypes.map((type, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                              {type}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {formData.affectedBodyParts && formData.affectedBodyParts.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Yaralanan Organ</h4>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {formData.affectedBodyParts.map((part, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                              {part}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {formData.severityLevel && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Ciddiyet</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.severityLevel}</p>
+                      </div>
+                    )}
+                    {(formData.daysOff !== undefined || formData.restrictedWorkDays !== undefined) && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Çalışma Durumu</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">
+                          {formData.daysOff ? `${formData.daysOff} gün çalışılamayan` : ''}
+                          {formData.daysOff && formData.restrictedWorkDays ? ', ' : ''}
+                          {formData.restrictedWorkDays ? `${formData.restrictedWorkDays} gün kısıtlı çalışma` : ''}
+                        </p>
+                      </div>
+                    )}
+                    {formData.returnToWorkDate && (
+                      <div>
+                        <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">İşbaşı Tarihi</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white">
+                          {new Date(formData.returnToWorkDate).toLocaleDateString('tr-TR')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {formData.treatmentInfo && (
+                    <div className="mt-4">
+                      <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400">Tedavi / Tanı</h4>
+                      <p className="mt-1 text-sm text-slate-900 dark:text-white">{formData.treatmentInfo}</p>
+                    </div>
+                  )}
+                  {formData.hospitalReferral && (
+                    <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                      <p className="text-sm text-amber-800 dark:text-amber-400 font-medium">Hastaneye sevk edildi</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             {(!formData.title || !formData.date || !formData.companyId || !formData.description) && (
@@ -422,7 +635,7 @@ export const NewIncidentWizard = () => {
                   )}
                 </Button>
                 
-                {currentStep < 3 ? (
+                {currentStep < 4 ? (
                   <Button onClick={handleNext}>
                     İleri <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
