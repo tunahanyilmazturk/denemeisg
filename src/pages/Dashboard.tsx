@@ -384,7 +384,7 @@ export const Dashboard = () => {
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Incident Severity Distribution */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <PieChartIcon className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Şiddet Dağılımı</h2>
@@ -409,7 +409,7 @@ export const Dashboard = () => {
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                        backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
                         borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
                         borderRadius: '0.75rem',
                       }}
@@ -427,7 +427,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Incident Trends */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <BarChart3 className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Aylık Olay Trendi</h2>
@@ -458,7 +458,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Risk Distribution */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <ShieldAlert className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Risk Dağılımı</h2>
@@ -483,7 +483,7 @@ export const Dashboard = () => {
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                        backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
                         borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
                         borderRadius: '0.75rem',
                       }}
@@ -504,7 +504,7 @@ export const Dashboard = () => {
         {/* Charts Row 2 & Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Incident Status */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <ListTodo className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Durumları</h2>
@@ -530,7 +530,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Training Completion */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <GraduationCap className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Eğitim Durumları</h2>
@@ -555,7 +555,7 @@ export const Dashboard = () => {
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                        backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
                         borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
                         borderRadius: '0.75rem',
                       }}
@@ -575,7 +575,7 @@ export const Dashboard = () => {
         {/* Lists Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Upcoming Trainings */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-slate-500" />
@@ -616,7 +616,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Recent Incidents */}
-          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <FileWarning className="h-5 w-5 text-slate-500" />
@@ -668,7 +668,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Company Comparison Chart */}
-        <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-all duration-300">
           <div className="flex items-center gap-2 mb-5">
             <Building2 className="h-5 w-5 text-slate-500" />
             <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Firma Karşılaştırması</h2>
@@ -682,7 +682,7 @@ export const Dashboard = () => {
                   <YAxis stroke={chartTextColor} tick={{ fill: chartTextColor, fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                      backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
                       borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
                       borderRadius: '0.75rem',
                     }}

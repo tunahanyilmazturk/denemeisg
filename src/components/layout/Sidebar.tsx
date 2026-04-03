@@ -119,7 +119,7 @@ export const Sidebar = () => {
   return (
     <aside 
       className={cn(
-        "bg-white dark:bg-[#09090b] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full transition-all duration-300 relative overflow-hidden",
+        "bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full transition-all duration-300 relative overflow-hidden",
         sidebarCollapsed ? "w-20" : "w-64"
       )}
     >

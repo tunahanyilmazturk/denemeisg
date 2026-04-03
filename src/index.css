@@ -14,7 +14,7 @@ body {
 }
 
 .dark body {
-  @apply bg-[#09090b] text-slate-50;
+  @apply bg-slate-950 text-slate-100;
 }
 
 h1, h2, h3, h4, h5, h6 {
