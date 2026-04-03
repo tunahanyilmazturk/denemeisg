@@ -306,76 +306,101 @@ export const NewIncidentWizard = () => {
 
   return (
     <PageTransition>
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div>
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-8">
           <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Yeni Olay Bildirimi</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">Adım adım kaza veya ramak kala olayını sisteme kaydedin.</p>
         </div>
 
-        {/* Stepper */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="mb-10">
-            <div className="flex items-center justify-between relative">
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
-              <div 
-                className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500"
-                style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-              ></div>
-              
-              {steps.map((step) => (
-                <div key={step.id} className="relative z-10 flex flex-col items-center gap-3">
-                  <div 
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-                      currentStep > step.id 
-                        ? 'bg-indigo-600 text-white dark:bg-indigo-500 shadow-md shadow-indigo-500/20' 
-                        : currentStep === step.id 
-                          ? 'bg-indigo-600 text-white dark:bg-indigo-500 ring-4 ring-indigo-100 dark:ring-indigo-900/30 shadow-md shadow-indigo-500/20'
-                          : 'bg-white text-slate-400 border-2 border-slate-200 dark:bg-[#09090b] dark:border-slate-700'
-                    }`}
-                  >
-                    {currentStep > step.id ? <CheckCircle2 className="h-6 w-6" /> : step.id}
-                  </div>
-                  <span className={`text-sm font-medium hidden sm:block ${
-                    currentStep >= step.id ? 'text-slate-900 dark:text-white' : 'text-slate-400'
-                  }`}>
-                    {step.title}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Form Content */}
-          <div className="min-h-[300px]">
-            {renderStepContent()}
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-10 pt-6 border-t border-slate-200/60 dark:border-slate-800/60">
-            <Button 
-              variant="secondary" 
-              onClick={currentStep === 1 ? () => navigate('/incidents') : handlePrev}
-            >
-              {currentStep === 1 ? 'İptal' : (
-                <>
-                  <ChevronLeft className="h-4 w-4 mr-2" /> Geri
-                </>
-              )}
-            </Button>
+        {/* Sidebar Layout */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="flex flex-col lg:flex-row min-h-[600px]">
             
-            {currentStep < 4 ? (
-              <Button onClick={handleNext}>
-                İleri <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleSubmit} 
-                className="bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-md hover:shadow-emerald-500/20"
-                disabled={!formData.title || !formData.date || !formData.companyId || !formData.description}
-              >
-                Bildirimi Kaydet <CheckCircle2 className="h-4 w-4 ml-2" />
-              </Button>
-            )}
+            {/* Steps Sidebar */}
+            <div className="w-full lg:w-72 bg-slate-50 dark:bg-slate-800/50 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-700">
+              <nav className="space-y-2">
+                {steps.map((step) => {
+                  const isActive = currentStep === step.id;
+                  const isCompleted = currentStep > step.id;
+                  const isClickable = step.id <= currentStep || isCompleted;
+                  
+                  return (
+                    <button
+                      key={step.id}
+                      onClick={() => isClickable && setCurrentStep(step.id)}
+                      disabled={!isClickable}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 shadow-sm'
+                          : isCompleted
+                            ? 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            : 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                        isActive
+                          ? 'bg-indigo-600 text-white dark:bg-indigo-500'
+                          : isCompleted
+                            ? 'bg-emerald-500 text-white dark:bg-emerald-500'
+                            : 'bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500'
+                      }`}>
+                        {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : step.id}
+                      </div>
+                      <span className="text-sm">{step.title}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Progress Indicator */}
+              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">İlerleme</p>
+                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${(currentStep / steps.length) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Adım {currentStep} / {steps.length}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <div className="flex-1 p-6 lg:p-8">
+              <div className="min-h-[400px]">
+                {renderStepContent()}
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between mt-10 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <Button 
+                  variant="secondary" 
+                  onClick={currentStep === 1 ? () => navigate('/incidents') : handlePrev}
+                >
+                  {currentStep === 1 ? 'İptal' : (
+                    <>
+                      <ChevronLeft className="h-4 w-4 mr-2" /> Geri
+                    </>
+                  )}
+                </Button>
+                
+                {currentStep < 4 ? (
+                  <Button onClick={handleNext}>
+                    İleri <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleSubmit} 
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-md hover:shadow-emerald-500/20"
+                    disabled={!formData.title || !formData.date || !formData.companyId || !formData.description}
+                  >
+                    Bildirimi Kaydet <CheckCircle2 className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
