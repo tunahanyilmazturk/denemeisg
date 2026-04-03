@@ -2,6 +2,36 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Company, Personnel, Incident, Training, PPE, Risk } from '../types';
 
+export type Theme = 'light' | 'dark' | 'system';
+export type Language = 'tr' | 'en';
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  avatar?: string;
+}
+
+export interface NotificationSettings {
+  emailNotifications: boolean;
+  incidentAlerts: boolean;
+  trainingReminders: boolean;
+  ppeExpiryAlerts: boolean;
+  riskUpdates: boolean;
+  dailySummary: boolean;
+}
+
+export interface SystemSettings {
+  companyName: string;
+  systemName: string;
+  contactEmail: string;
+  theme: Theme;
+  language: Language;
+  autoBackup: boolean;
+  dateFormat: string;
+}
+
 interface AppState {
   companies: Company[];
   personnel: Personnel[];
@@ -11,7 +41,14 @@ interface AppState {
   risks: Risk[];
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-  addCompany: (company: Company) => void;
+  // Settings
+  systemSettings: SystemSettings;
+  notificationSettings: NotificationSettings;
+  userProfile: UserProfile;
+  updateSystemSettings: (settings: Partial<SystemSettings>) => void;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
+  // ...existing actions
   updateCompany: (company: Company) => void;
   deleteCompany: (id: string) => void;
   addPersonnel: (person: Personnel) => void;
@@ -136,6 +173,56 @@ export const useStore = create<AppState>()(
         }
         return { isDarkMode: newMode };
       }),
+      // Settings
+      systemSettings: {
+        companyName: 'HanTech Teknoloji A.Ş.',
+        systemName: 'HanTech AI',
+        contactEmail: 'info@hantech.com',
+        theme: 'system',
+        language: 'tr',
+        autoBackup: true,
+        dateFormat: 'DD.MM.YYYY',
+      },
+      notificationSettings: {
+        emailNotifications: true,
+        incidentAlerts: true,
+        trainingReminders: true,
+        ppeExpiryAlerts: true,
+        riskUpdates: true,
+        dailySummary: false,
+      },
+      userProfile: {
+        name: 'Yönetici',
+        email: 'admin@hantech.com',
+        phone: '0532 123 45 67',
+        role: 'İSG Yöneticisi',
+      },
+      updateSystemSettings: (settings) => set((state) => {
+        const newSettings = { ...state.systemSettings, ...settings };
+        // Apply theme change immediately
+        if (settings.theme) {
+          if (settings.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else if (settings.theme === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else {
+            // System preference
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (prefersDark) {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          }
+        }
+        return { systemSettings: newSettings };
+      }),
+      updateNotificationSettings: (settings) => set((state) => ({
+        notificationSettings: { ...state.notificationSettings, ...settings },
+      })),
+      updateUserProfile: (profile) => set((state) => ({
+        userProfile: { ...state.userProfile, ...profile },
+      })),
       addCompany: (company) => set((state) => ({ companies: [...state.companies, company] })),
       updateCompany: (company) => set((state) => ({
         companies: state.companies.map((c) => (c.id === company.id ? company : c)),
@@ -181,6 +268,18 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'hantech-storage',
+      partialize: (state) => ({
+        companies: state.companies,
+        personnel: state.personnel,
+        incidents: state.incidents,
+        trainings: state.trainings,
+        ppes: state.ppes,
+        risks: state.risks,
+        isDarkMode: state.isDarkMode,
+        systemSettings: state.systemSettings,
+        notificationSettings: state.notificationSettings,
+        userProfile: state.userProfile,
+      }),
     }
   )
 );
