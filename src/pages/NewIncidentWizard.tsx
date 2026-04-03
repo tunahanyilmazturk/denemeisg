@@ -14,7 +14,8 @@ const steps = [
   { id: 3, title: 'Kazalı Bilgileri' },
   { id: 4, title: 'Revde Tedavi Bilgileri' },
   { id: 5, title: 'Önlem Önerileri' },
-  { id: 6, title: 'Gözden Geçirme' }
+  { id: 6, title: 'Açıklamalar' },
+  { id: 7, title: 'Gözden Geçirme' }
 ];
 
 export const NewIncidentWizard = () => {
@@ -54,7 +55,7 @@ export const NewIncidentWizard = () => {
   }, [formData.date, formData.companyId, formData.type, companies, isTitleEdited]);
 
   const handleNext = () => {
-    if (currentStep < 6) setCurrentStep(currentStep + 1);
+    if (currentStep < 7) setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
@@ -695,6 +696,184 @@ export const NewIncidentWizard = () => {
           </div>
         );
       case 6:
+        // Açıklamalar - Descriptions with auto-fill functionality
+        
+        const generateIncidentDescription = () => {
+          const company = companies.find(c => c.id === formData.companyId);
+          const person = personnel.find(p => p.id === formData.personnelId);
+          const injuredPerson = formData.injuredPersonName || (person ? `${person.firstName} ${person.lastName}` : 'Personel');
+          const companyName = company?.name || 'Firma';
+          const location = formData.location || 'Belirtilen lokasyon';
+          const date = formData.date ? new Date(formData.date).toLocaleDateString('tr-TR') : 'Tarih';
+          const injuryTypes = formData.injuryTypes?.join(', ') || '';
+          const bodyParts = formData.affectedBodyParts?.join(', ') || '';
+          
+          let description = `${date} tarihinde ${companyName} bünyesinde ${location} bölgesinde çalışmakta olan ${injuredPerson} `;
+          
+          if (formData.type === 'İş Kazası') {
+            description += `iş kazası geçirmiştir.`;
+          } else if (formData.type === 'Ramak Kala') {
+            description += `ramak kala olayı yaşamıştır.`;
+          } else {
+            description += `${formData.type?.toLowerCase()} yaşamıştır.`;
+          }
+          
+          if (injuryTypes) {
+            description += ` Yaralanma türü: ${injuryTypes}.`;
+          }
+          if (bodyParts) {
+            description += ` Etkilenen bölgeler: ${bodyParts}.`;
+          }
+          if (formData.description) {
+            description += ` Olayın kısa özeti: ${formData.description}`;
+          }
+          
+          return description;
+        };
+
+        const generateMedicalDescription = () => {
+          const injuredPerson = formData.injuredPersonName || 'Personel';
+          const injuryTypes = formData.injuryTypes?.join(', ') || 'yaralanma';
+          const severity = formData.severityLevel || 'Belirtilmemiş';
+          const bodyParts = formData.affectedBodyParts?.join(', ') || 'belirtilen bölgeler';
+          
+          let description = `${injuredPerson}, ${bodyParts} bölgesinde ${injuryTypes} şeklinde yaralanmıştır.`;
+          description += ` Ciddiyet derecesi: ${severity}.`;
+          
+          if (formData.treatmentInfo) {
+            description += ` Uygulanan tedavi: ${formData.treatmentInfo}.`;
+          } else {
+            description += ` Revire başvurmuş, ilk müdahale yapılmıştır.`;
+          }
+          
+          if (formData.hospitalReferral) {
+            description += ` Hastaneye sevk edilmiştir.`;
+          }
+          
+          if (formData.daysOff && formData.daysOff > 0) {
+            description += ` Çalışan ${formData.daysOff} gün dinlenmeye tabi tutulmuştur.`;
+          }
+          
+          return description;
+        };
+
+        const generateRootCauseAnalysis = () => {
+          const person = personnel.find(p => p.id === formData.personnelId);
+          const injuredPerson = formData.injuredPersonName || (person ? `${person.firstName} ${person.lastName}` : 'Personel');
+          const experience = formData.injuredPersonTaskExperience || 'Belirtilmemiş';
+          const shift = formData.injuredPersonShift || 'Belirtilmemiş';
+          
+          let analysis = `Kök Neden Analizi:\n\n`;
+          analysis += `1. OLAY ÖZETİ:\n`;
+          analysis += `- Olay tarihi: ${formData.date ? new Date(formData.date).toLocaleDateString('tr-TR') : '-'}\n`;
+          analysis += `- Kazalı personel: ${injuredPerson}\n`;
+          analysis += `- Görevdeki tecrübesi: ${experience}\n`;
+          analysis += `- Çalışma vardiyası: ${shift}\n\n`;
+          
+          analysis += `2. GÖZLEMLENEN NEDENLER:\n`;
+          analysis += `- İnsan faktörü: Tecrübe seviyesi veya dikkat eksikliği\n`;
+          analysis += `- Çevre koşulları: ${formData.location || 'Belirtilen lokasyon'}\n`;
+          analysis += `- Organizasyon: Vardiya düzeni veya eğitim ihtiyacı\n\n`;
+          
+          analysis += `3. TEMEL NEDENLER:\n`;
+          analysis += `- Risk değerlendirmesi yetersizliği\n`;
+          analysis += `- Eğitim ve bilgilendirme eksiklikleri\n`;
+          analysis += `- Güvenli çalışma prosedürlerinin uygulanmaması\n\n`;
+          
+          analysis += `4. ÖNERİLEN DÜZELTİCİ FAALİYETLER:\n`;
+          if (formData.measuresPersonnel?.length) {
+            analysis += `- İnsan önlemleri: ${formData.measuresPersonnel.join(', ')}\n`;
+          }
+          if (formData.measuresEquipment?.length) {
+            analysis += `- Ekipman önlemleri: ${formData.measuresEquipment.join(', ')}\n`;
+          }
+          if (formData.measuresEnvironment?.length) {
+            analysis += `- Ortam önlemleri: ${formData.measuresEnvironment.join(', ')}\n`;
+          }
+          if (formData.measuresMethod?.length) {
+            analysis += `- Yöntem önlemleri: ${formData.measuresMethod.join(', ')}\n`;
+          }
+          
+          return analysis;
+        };
+
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Açıklamalar</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 -mt-4 mb-4">
+              Aşağıdaki açıklama alanlarını manuel olarak doldurabilir veya "Otomatik Doldur" butonları ile sistem tarafından otomatik oluşturulmasını sağlayabilirsiniz.
+            </p>
+            
+            <div className="space-y-6">
+              {/* Olay Açıklaması */}
+              <div className="space-y-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">1. Olay Açıklaması</label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setFormData({...formData, incidentDescription: generateIncidentDescription()})}
+                    className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                  >
+                    ✨ Otomatik Doldur
+                  </Button>
+                </div>
+                <textarea
+                  className="flex min-h-[120px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
+                  value={formData.incidentDescription || ''}
+                  onChange={e => setFormData({...formData, incidentDescription: e.target.value})}
+                  placeholder="Olayın detaylı açıklamasını giriniz..."
+                />
+              </div>
+
+              {/* Revir Tedavi Açıklaması */}
+              <div className="space-y-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-emerald-900 dark:text-emerald-400">2. Revir Tedavi Açıklaması</label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setFormData({...formData, medicalTreatmentDescription: generateMedicalDescription()})}
+                    className="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  >
+                    ✨ Otomatik Doldur
+                  </Button>
+                </div>
+                <textarea
+                  className="flex min-h-[120px] w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200"
+                  value={formData.medicalTreatmentDescription || ''}
+                  onChange={e => setFormData({...formData, medicalTreatmentDescription: e.target.value})}
+                  placeholder="Revde uygulanan tedavi açıklamasını giriniz..."
+                />
+              </div>
+
+              {/* Kök Neden Analizi */}
+              <div className="space-y-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-amber-900 dark:text-amber-400">3. Kök Neden Analizi</label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setFormData({...formData, rootCauseAnalysis: generateRootCauseAnalysis()})}
+                    className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  >
+                    ✨ Otomatik Doldur
+                  </Button>
+                </div>
+                <textarea
+                  className="flex min-h-[200px] w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-amber-800 dark:bg-slate-900 dark:text-slate-50 transition-all duration-200 font-mono"
+                  value={formData.rootCauseAnalysis || ''}
+                  onChange={e => setFormData({...formData, rootCauseAnalysis: e.target.value})}
+                  placeholder="Kök neden analizini giriniz..."
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 7:
         const company = companies.find(c => c.id === formData.companyId);
         const person = personnel.find(p => p.id === formData.personnelId);
         
@@ -949,6 +1128,33 @@ export const NewIncidentWizard = () => {
                   </div>
                 </div>
               )}
+
+              {/* Açıklamalar */}
+              {(formData.incidentDescription || formData.medicalTreatmentDescription || formData.rootCauseAnalysis) && (
+                <div className="pt-4 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Açıklamalar</h3>
+                  <div className="space-y-4">
+                    {formData.incidentDescription && (
+                      <div>
+                        <h4 className="text-xs font-medium text-indigo-600 dark:text-indigo-400">Olay Açıklaması</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white whitespace-pre-wrap">{formData.incidentDescription}</p>
+                      </div>
+                    )}
+                    {formData.medicalTreatmentDescription && (
+                      <div>
+                        <h4 className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Revir Tedavi Açıklaması</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white whitespace-pre-wrap">{formData.medicalTreatmentDescription}</p>
+                      </div>
+                    )}
+                    {formData.rootCauseAnalysis && (
+                      <div>
+                        <h4 className="text-xs font-medium text-amber-600 dark:text-amber-400">Kök Neden Analizi</h4>
+                        <p className="mt-1 text-sm text-slate-900 dark:text-white whitespace-pre-wrap font-mono">{formData.rootCauseAnalysis}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             
             {(!formData.title || !formData.date || !formData.companyId || !formData.description) && (
@@ -1046,7 +1252,7 @@ export const NewIncidentWizard = () => {
                   )}
                 </Button>
                 
-                {currentStep < 6 ? (
+                {currentStep < 7 ? (
                   <Button onClick={handleNext}>
                     İleri <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>

@@ -81,6 +81,10 @@ export interface Incident {
   injuredPersonTaskExperience?: string;
   injuredPersonGender?: 'Erkek' | 'Kadın';
   injuredPersonShift?: string;
+  // Açıklamalar (Otomatik doldurulabilir)
+  incidentDescription?: string;
+  medicalTreatmentDescription?: string;
+  rootCauseAnalysis?: string;
   createdAt: string;
 }
 
