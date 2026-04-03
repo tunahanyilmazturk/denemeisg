@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Risk, RiskStatus } from '../types';
-import { Plus, Search, Edit2, Trash2, Download, FileText, ShieldAlert } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Download, FileText, ShieldAlert, Filter, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { DataTable } from '../components/ui/DataTable';
+import { useDataTable } from '../hooks/useDataTable';
 import { PageTransition } from '../components/layout/PageTransition';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -13,15 +15,48 @@ import * as XLSX from 'xlsx';
 
 export const RisksPage = () => {
   const { risks, addRisk, updateRisk, deleteRisk } = useStore();
-  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentRisk, setCurrentRisk] = useState<Partial<Risk>>({ probability: 1, severity: 1 });
+  const [showFilters, setShowFilters] = useState(false);
 
-  const filteredRisks = risks.filter(r => 
-    r.hazard.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    r.risk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.responsible.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    paginatedData,
+    sortConfig,
+    handleSort,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilter,
+    clearFilters,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+  } = useDataTable<Risk>({
+    data: risks,
+    initialSort: { key: 'score', direction: 'desc' },
+    initialPageSize: 10,
+  });
+
+  // Apply custom filters
+  const filteredRisks = paginatedData.filter((r) => {
+    const matchesSearch = 
+      r.hazard.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      r.risk.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.responsible.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = !filters.status || filters.status === 'all' || r.status === filters.status;
+    const matchesScoreRange = !filters.scoreRange || filters.scoreRange === 'all' || 
+      (filters.scoreRange === 'low' && r.score <= 6) ||
+      (filters.scoreRange === 'medium' && r.score > 6 && r.score <= 12) ||
+      (filters.scoreRange === 'high' && r.score > 12);
+    
+    return matchesSearch && matchesStatus && matchesScoreRange;
+  });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,10 +89,119 @@ export const RisksPage = () => {
   };
 
   const getScoreColor = (score: number) => {
-    if (score <= 6) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-    if (score <= 12) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    if (score <= 6) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+    if (score <= 12) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
   };
+
+  const getScoreLabel = (score: number) => {
+    if (score <= 6) return 'Düşük';
+    if (score <= 12) return 'Orta';
+    return 'Yüksek';
+  };
+
+  const columns = [
+    {
+      key: 'hazard',
+      header: 'Tehlike / Risk',
+      sortable: true,
+      render: (r: Risk) => (
+        <div>
+          <div className="font-medium text-slate-900 dark:text-white">{r.hazard}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{r.risk}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'score',
+      header: 'Skor',
+      sortable: true,
+      width: '100px',
+      render: (r: Risk) => (
+        <div className="text-center">
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${getScoreColor(r.score)}`}>
+            {r.score}
+          </span>
+          <div className="text-[10px] text-slate-400 mt-1">{r.probability} × {r.severity}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'scoreRange',
+      header: 'Risk Seviyesi',
+      width: '120px',
+      render: (r: Risk) => (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getScoreColor(r.score)}`}>
+          {getScoreLabel(r.score)}
+        </span>
+      ),
+    },
+    {
+      key: 'controlMeasure',
+      header: 'Kontrol Tedbiri',
+      sortable: true,
+      render: (r: Risk) => (
+        <div className="max-w-xs truncate text-slate-700 dark:text-slate-300" title={r.controlMeasure}>
+          {r.controlMeasure}
+        </div>
+      ),
+    },
+    {
+      key: 'responsible',
+      header: 'Sorumlu',
+      sortable: true,
+      render: (r: Risk) => (
+        <span className="text-slate-900 dark:text-white font-medium">{r.responsible}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Durum',
+      sortable: true,
+      width: '120px',
+      render: (r: Risk) => (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+          r.status === 'Giderildi' 
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+          r.status === 'Devam Ediyor' 
+            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        }`}>
+          {r.status}
+        </span>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Tarih',
+      sortable: true,
+      width: '110px',
+      render: (r: Risk) => new Date(r.date).toLocaleDateString('tr-TR'),
+    },
+    {
+      key: 'actions',
+      header: 'İşlemler',
+      width: '100px',
+      render: (r: Risk) => (
+        <div className="flex items-center justify-end gap-2">
+          <button 
+            onClick={() => openEditModal(r)} 
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+          <button 
+            onClick={() => handleDelete(r.id)} 
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const hasActiveFilters = searchTerm || filters.status || filters.scoreRange;
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
@@ -104,11 +248,16 @@ export const RisksPage = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Risk Değerlendirmesi</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">Tehlike ve riskleri belirleyin, skorlayın ve tedbirleri takip edin.</p>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+              Risk Değerlendirmesi
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">
+              Tehlike ve riskleri belirleyin, skorlayın ve tedbirleri takip edin.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
@@ -123,9 +272,10 @@ export const RisksPage = () => {
           </div>
         </div>
 
-        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">
-          <div className="p-5 border-b border-slate-200/60 dark:border-slate-800/60">
-            <div className="relative max-w-md">
+        {/* Search & Filters */}
+        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder="Tehlike, risk veya sorumlu ara..." 
@@ -134,74 +284,88 @@ export const RisksPage = () => {
                 className="pl-10"
               />
             </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
-                <tr>
-                  <th className="px-6 py-3">Tehlike / Risk</th>
-                  <th className="px-6 py-3 text-center">Skor (O x Ş)</th>
-                  <th className="px-6 py-3">Kontrol Tedbiri</th>
-                  <th className="px-6 py-3">Sorumlu</th>
-                  <th className="px-6 py-3">Durum</th>
-                  <th className="px-6 py-3 text-right">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredRisks.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                      <div className="flex flex-col items-center justify-center">
-                        <ShieldAlert className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />
-                        <p>Kayıt bulunamadı.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRisks.map((risk) => (
-                    <tr key={risk.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900 dark:text-white">{risk.hazard}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{risk.risk}</div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getScoreColor(risk.score)}`}>
-                          {risk.score}
-                        </span>
-                        <div className="text-[10px] text-gray-400 mt-1">{risk.probability} x {risk.severity}</div>
-                      </td>
-                      <td className="px-6 py-4 max-w-xs truncate" title={risk.controlMeasure}>
-                        {risk.controlMeasure}
-                      </td>
-                      <td className="px-6 py-4">{risk.responsible}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                          risk.status === 'Giderildi' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                          risk.status === 'Devam Ediyor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {risk.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => openEditModal(risk)} className="p-1 text-blue-600 hover:bg-blue-50 rounded dark:text-blue-400 dark:hover:bg-blue-900/30">
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button onClick={() => handleDelete(risk.id)} className="p-1 text-red-600 hover:bg-red-50 rounded dark:text-red-400 dark:hover:bg-red-900/30">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`gap-2 ${showFilters ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+              >
+                <Filter className="h-4 w-4" />
+                Filtreler
+                {hasActiveFilters && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
                 )}
-              </tbody>
-            </table>
+              </Button>
+              {hasActiveFilters && (
+                <Button variant="ghost" onClick={clearFilters} className="gap-2 text-slate-500">
+                  <X className="h-4 w-4" />
+                  Temizle
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Durum
+                </label>
+                <select
+                  value={filters.status || 'all'}
+                  onChange={(e) => setFilter('status', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Durumlar</option>
+                  <option value="Açık">Açık</option>
+                  <option value="Devam Ediyor">Devam Ediyor</option>
+                  <option value="Giderildi">Giderildi</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Risk Seviyesi
+                </label>
+                <select
+                  value={filters.scoreRange || 'all'}
+                  onChange={(e) => setFilter('scoreRange', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Seviyeler</option>
+                  <option value="low">Düşük (1-6)</option>
+                  <option value="medium">Orta (7-12)</option>
+                  <option value="high">Yüksek (13-25)</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Data Table */}
+        <DataTable
+          data={filteredRisks}
+          columns={columns}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalItems={totalItems}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          keyExtractor={(r) => r.id}
+          emptyMessage={
+            <div className="flex flex-col items-center justify-center py-8">
+              <ShieldAlert className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-slate-500 dark:text-slate-400">Risk kaydı bulunamadı.</p>
+            </div>
+          }
+        />
+
+        {/* Add/Edit Modal */}
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
@@ -228,7 +392,7 @@ export const RisksPage = () => {
                 <label className="text-sm font-medium">Olasılık (1-5)</label>
                 <select 
                   required
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                   value={currentRisk.probability || 1}
                   onChange={e => setCurrentRisk({...currentRisk, probability: Number(e.target.value)})}
                 >
@@ -239,7 +403,7 @@ export const RisksPage = () => {
                 <label className="text-sm font-medium">Şiddet (1-5)</label>
                 <select 
                   required
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                   value={currentRisk.severity || 1}
                   onChange={e => setCurrentRisk({...currentRisk, severity: Number(e.target.value)})}
                 >
@@ -252,7 +416,7 @@ export const RisksPage = () => {
               <label className="text-sm font-medium">Kontrol Tedbiri</label>
               <textarea 
                 required
-                className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                className="flex min-h-[80px] w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 value={currentRisk.controlMeasure || ''}
                 onChange={e => setCurrentRisk({...currentRisk, controlMeasure: e.target.value})}
                 placeholder="Alınacak önlemleri yazın..."
@@ -268,7 +432,7 @@ export const RisksPage = () => {
                 <label className="text-sm font-medium">Durum</label>
                 <select 
                   required
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                   value={currentRisk.status || 'Açık'}
                   onChange={e => setCurrentRisk({...currentRisk, status: e.target.value as RiskStatus})}
                 >

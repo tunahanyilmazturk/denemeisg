@@ -1,11 +1,37 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { Building2, Users, AlertTriangle, CheckCircle, GraduationCap, HardHat, ShieldAlert, TrendingUp, TrendingDown, Calendar, Activity } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { 
+  Building2, Users, AlertTriangle, CheckCircle, GraduationCap, HardHat, ShieldAlert, 
+  TrendingUp, TrendingDown, Calendar, Activity, FileWarning, Clock, CheckCircle2,
+  ArrowRight, BarChart3, PieChart as PieChartIcon, ListTodo
+} from 'lucide-react';
+import { 
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+  ResponsiveContainer, AreaChart, Area, LineChart, Line 
+} from 'recharts';
 import { PageTransition } from '../components/layout/PageTransition';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 
-const StatCard = ({ label, value, icon: Icon, color, trend, index }: { label: string, value: number, icon: React.ElementType, color: string, trend?: 'up' | 'down', index: number }) => (
+const StatCard = ({ 
+  label, 
+  value, 
+  icon: Icon, 
+  color, 
+  trend, 
+  trendValue,
+  index,
+  subtitle
+}: { 
+  label: string; 
+  value: number; 
+  icon: React.ElementType; 
+  color: string; 
+  trend?: 'up' | 'down' | 'neutral'; 
+  trendValue?: string;
+  index: number;
+  subtitle?: string;
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -17,16 +43,22 @@ const StatCard = ({ label, value, icon: Icon, color, trend, index }: { label: st
       <div className={`p-4 rounded-2xl ${color.replace('text-', 'bg-')}/20 ${color} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
         <Icon className="h-7 w-7" />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-          {trend && (
+          {trend && trend !== 'neutral' && (
             <span className={`flex items-center text-xs ${trend === 'up' ? 'text-emerald-500' : 'text-red-500'}`}>
               {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             </span>
           )}
         </div>
         <p className="text-3xl font-display font-bold text-slate-900 dark:text-white tracking-tight">{value}</p>
+        {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+        {trendValue && (
+          <p className={`text-xs mt-1 ${trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-slate-500'}`}>
+            {trendValue}
+          </p>
+        )}
       </div>
     </div>
   </motion.div>
@@ -35,16 +67,101 @@ const StatCard = ({ label, value, icon: Icon, color, trend, index }: { label: st
 export const Dashboard = () => {
   const { companies, personnel, incidents, trainings, ppes, risks, isDarkMode } = useStore();
 
+  // Calculate statistics
   const openIncidents = incidents.filter(i => i.status !== 'Kapalı').length;
   const activePPEs = ppes.filter(p => p.status === 'Aktif').length;
-  const openRisks = risks.filter(r => r.status !== 'Giderildi').length;
+  const openRisks = risks.filter(r => r.status !== 'Giderildi');
+  const highRisks = openRisks.filter(r => r.score > 12).length;
+  const mediumRisks = openRisks.filter(r => r.score > 6 && r.score <= 12).length;
   const completedTrainings = trainings.filter(t => t.status === 'Tamamlandı').length;
+  const upcomingTrainings = trainings.filter(t => t.status === 'Planlandı').length;
 
-const stats: Array<{ label: string; value: number; icon: React.ElementType; color: string; trend?: 'up' | 'down' }> = [
-    { label: 'Toplam Personel', value: personnel.length, icon: Users, color: 'text-indigo-600 dark:text-indigo-400', trend: 'up' as const },
-    { label: 'Açık Kazalar/Olaylar', value: openIncidents, icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', trend: openIncidents > 0 ? 'down' as const : undefined },
-    { label: 'Aktif KKD Zimmeti', value: activePPEs, icon: HardHat, color: 'text-emerald-600 dark:text-emerald-400' },
-    { label: 'Açık Riskler', value: openRisks, icon: ShieldAlert, color: 'text-orange-600 dark:text-orange-400' },
+  // Risk stats for charts
+  const riskStats = useMemo(() => ({
+    total: risks.length,
+    open: openRisks.length,
+    high: highRisks,
+    medium: mediumRisks,
+    low: openRisks.filter(r => r.score <= 6).length,
+    resolved: risks.filter(r => r.status === 'Giderildi').length,
+  }), [risks, openRisks, highRisks, mediumRisks]);
+
+  // Incident stats by month
+  const incidentsByMonth = useMemo(() => {
+    const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    const currentMonth = new Date().getMonth();
+    const last6Months = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      last6Months.push(months[monthIndex]);
+    }
+    
+    return last6Months.map((month, idx) => {
+      const targetMonth = (currentMonth - (5 - idx) + 12) % 12;
+      const count = incidents.filter(i => {
+        const incidentDate = new Date(i.date);
+        return incidentDate.getMonth() === targetMonth;
+      }).length;
+      return { name: month, incidents: count };
+    });
+  }, [incidents]);
+
+  // Training completion rate
+  const trainingStats = useMemo(() => {
+    const total = trainings.length || 1;
+    const completed = completedTrainings;
+    const planned = upcomingTrainings;
+    const cancelled = trainings.filter(t => t.status === 'İptal').length;
+    return [
+      { name: 'Tamamlandı', value: completed, color: '#10b981' },
+      { name: 'Planlandı', value: planned, color: '#6366f1' },
+      { name: 'İptal', value: cancelled, color: '#ef4444' },
+    ];
+  }, [trainings, completedTrainings, upcomingTrainings]);
+
+  // Quick actions items
+  const quickActions = [
+    { label: 'Yeni Olay Bildir', icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', to: '/incidents/new' },
+    { label: 'Risk Ekle', icon: ShieldAlert, color: 'text-orange-600 dark:text-orange-400', to: '/risks' },
+    { label: 'Eğitim Planla', icon: GraduationCap, color: 'text-blue-600 dark:text-blue-400', to: '/trainings' },
+    { label: 'Personel Ekle', icon: Users, color: 'text-indigo-600 dark:text-indigo-400', to: '/personnel' },
+  ];
+
+  const stats = [
+    { 
+      label: 'Toplam Personel', 
+      value: personnel.length, 
+      icon: Users, 
+      color: 'text-indigo-600 dark:text-indigo-400',
+      subtitle: `${companies.length} firmaya atanmış`,
+      trend: 'up' as const 
+    },
+    { 
+      label: 'Açık Olaylar', 
+      value: openIncidents, 
+      icon: AlertTriangle, 
+      color: 'text-red-600 dark:text-red-400',
+      subtitle: `${incidents.filter(i => i.severity === 'Kritik' || i.severity === 'Yüksek').length} yüksek öncelikli`,
+      trend: openIncidents > 0 ? 'down' as const : 'neutral' as const,
+      trendValue: openIncidents > 0 ? 'Acil çözüm gerekiyor' : undefined
+    },
+    { 
+      label: 'Aktif KKD Zimmeti', 
+      value: activePPEs, 
+      icon: HardHat, 
+      color: 'text-emerald-600 dark:text-emerald-400',
+      subtitle: `${ppes.filter(p => p.status === 'Yıprandı/Kayıp').length} yıpranmış/kayıp`,
+    },
+    { 
+      label: 'Yüksek Riskler', 
+      value: highRisks, 
+      icon: ShieldAlert, 
+      color: 'text-orange-600 dark:text-orange-400',
+      subtitle: `${mediumRisks} orta, ${riskStats.low} düşük risk`,
+      trend: highRisks > 0 ? 'down' as const : 'neutral' as const,
+      trendValue: highRisks > 0 ? 'Öncelikli müdahale' : undefined
+    },
   ];
 
   // Prepare data for charts
@@ -61,16 +178,48 @@ const stats: Array<{ label: string; value: number; icon: React.ElementType; colo
     { name: 'Kapalı', value: incidents.filter(i => i.status === 'Kapalı').length },
   ];
 
+  const riskDistribution = [
+    { name: 'Düşük (1-6)', value: riskStats.low, color: '#10b981' },
+    { name: 'Orta (7-12)', value: riskStats.medium, color: '#f59e0b' },
+    { name: 'Yüksek (13-25)', value: riskStats.high, color: '#ef4444' },
+  ].filter(d => d.value > 0);
+
   const chartTextColor = isDarkMode ? '#9ca3af' : '#4b5563';
 
   return (
     <PageTransition>
       <div className="space-y-8">
+        {/* Header */}
         <div>
           <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">Sistem genel bakış ve özet istatistikler.</p>
         </div>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {quickActions.map((action, idx) => (
+            <motion.div
+              key={action.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.05 }}
+            >
+              <Link
+                to={action.to}
+                className="flex items-center gap-3 p-4 bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl border border-slate-200/60 dark:border-slate-800/60 hover:shadow-lg hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-300 group"
+              >
+                <div className={`p-2 rounded-xl ${action.color.replace('text-', 'bg-')}/10 ${action.color} group-hover:scale-110 transition-transform`}>
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                  {action.label}
+                </span>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, idx) => (
             <StatCard 
@@ -79,15 +228,22 @@ const stats: Array<{ label: string; value: number; icon: React.ElementType; colo
               icon={stat.icon}
               color={stat.color}
               trend={stat.trend}
+              trendValue={stat.trendValue}
+              subtitle={stat.subtitle}
               index={idx}
             />
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Charts Row 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Incident Severity Distribution */}
           <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Olay Şiddet Dağılımı</h2>
-            <div className="h-[300px] w-full">
+            <div className="flex items-center gap-2 mb-6">
+              <PieChartIcon className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Şiddet Dağılımı</h2>
+            </div>
+            <div className="h-[250px] w-full">
               {incidents.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -95,8 +251,8 @@ const stats: Array<{ label: string; value: number; icon: React.ElementType; colo
                       data={severityData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
+                      innerRadius={60}
+                      outerRadius={90}
                       paddingAngle={5}
                       dataKey="value"
                       stroke="none"
@@ -110,84 +266,241 @@ const stats: Array<{ label: string; value: number; icon: React.ElementType; colo
                         backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
                         borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
                         borderRadius: '0.75rem',
-                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
                       }}
                       itemStyle={{ color: chartTextColor }}
                     />
-                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
-                  <p>Yeterli veri bulunmuyor</p>
+                  <p>Henüz olay kaydı yok</p>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Incident Trends */}
           <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Olay Durumları</h2>
-            <div className="h-[300px] w-full">
-              {incidents.length > 0 ? (
+            <div className="flex items-center gap-2 mb-6">
+              <BarChart3 className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Aylık Olay Trendi</h2>
+            </div>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={incidentsByMonth}>
+                  <defs>
+                    <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#1e293b' : '#e2e8f0'} vertical={false} />
+                  <XAxis dataKey="name" stroke={chartTextColor} tick={{ fill: chartTextColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke={chartTextColor} tick={{ fill: chartTextColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                      borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                      borderRadius: '0.75rem',
+                    }}
+                  />
+                  <Area type="monotone" dataKey="incidents" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorIncidents)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Risk Distribution */}
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-6">
+              <ShieldAlert className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Risk Dağılımı</h2>
+            </div>
+            <div className="h-[250px] w-full">
+              {risks.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statusData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#1e293b' : '#e2e8f0'} vertical={false} />
-                    <XAxis dataKey="name" stroke={chartTextColor} tick={{ fill: chartTextColor }} axisLine={false} tickLine={false} />
-                    <YAxis stroke={chartTextColor} tick={{ fill: chartTextColor }} axisLine={false} tickLine={false} />
+                  <PieChart>
+                    <Pie
+                      data={riskDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {riskDistribution.map((entry, index) => (
+                        <Cell key={`risk-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
                     <Tooltip 
-                      cursor={{ fill: isDarkMode ? '#1e293b' : '#f1f5f9' }}
                       contentStyle={{ 
                         backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
                         borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
                         borderRadius: '0.75rem',
-                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
                       }}
+                      itemStyle={{ color: chartTextColor }}
                     />
-                    <Bar dataKey="value" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={40} />
-                  </BarChart>
+                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                  </PieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
-                  <p>Yeterli veri bulunmuyor</p>
+                  <p>Henüz risk kaydı yok</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
+        {/* Charts Row 2 & Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Incident Status */}
           <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Yaklaşan Eğitimler</h2>
-            <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-6">
+              <ListTodo className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Durumları</h2>
+            </div>
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#1e293b' : '#e2e8f0'} vertical={false} />
+                  <XAxis dataKey="name" stroke={chartTextColor} tick={{ fill: chartTextColor }} axisLine={false} tickLine={false} />
+                  <YAxis stroke={chartTextColor} tick={{ fill: chartTextColor }} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    cursor={{ fill: isDarkMode ? '#1e293b' : '#f1f5f9' }}
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                      borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                      borderRadius: '0.75rem',
+                    }}
+                  />
+                  <Bar dataKey="value" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Training Completion */}
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2 mb-6">
+              <GraduationCap className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Eğitim Durumları</h2>
+            </div>
+            <div className="h-[200px] w-full">
+              {trainings.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={trainingStats}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {trainingStats.map((entry, index) => (
+                        <Cell key={`training-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: isDarkMode ? '#09090b' : '#ffffff',
+                        borderColor: isDarkMode ? '#1e293b' : '#e2e8f0',
+                        borderRadius: '0.75rem',
+                      }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
+                  <p>Henüz eğitim kaydı yok</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Lists Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Upcoming Trainings */}
+          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-slate-500" />
+                <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Yaklaşan Eğitimler</h2>
+              </div>
+              <Link to="/trainings" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                Tümünü Gör <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="space-y-3">
               {trainings
                 .filter(t => t.status === 'Planlandı')
                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .slice(0, 3)
+                .slice(0, 4)
                 .map(training => (
                 <div key={training.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white">{training.title}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{training.trainer} • {training.participants.length} Katılımcı</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                      <GraduationCap className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-white">{training.title}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{training.trainer} • {training.participants.length} Katılımcı</p>
+                    </div>
                   </div>
-                  <span className="text-xs font-medium px-2.5 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-full">
+                  <span className="text-xs font-medium px-3 py-1.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-full">
                     {new Date(training.date).toLocaleDateString('tr-TR')}
                   </span>
                 </div>
               ))}
               {trainings.filter(t => t.status === 'Planlandı').length === 0 && (
-                <p className="text-sm text-slate-500 dark:text-slate-400">Planlanmış eğitim bulunmuyor.</p>
+                <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-slate-400">
+                  <CheckCircle2 className="h-10 w-10 mb-2 text-slate-300" />
+                  <p>Planlanmış eğitim bulunmuyor.</p>
+                </div>
               )}
             </div>
           </div>
 
+          {/* Recent Incidents */}
           <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
-            <h2 className="text-xl font-display font-semibold mb-6 text-slate-900 dark:text-white">Son Olay Bildirimleri</h2>
-            <div className="space-y-4">
-              {incidents.slice(-3).reverse().map(incident => (
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <FileWarning className="h-5 w-5 text-slate-500" />
+                <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Son Olay Bildirimleri</h2>
+              </div>
+              <Link to="/incidents" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+                Tümünü Gör <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {incidents.slice(-4).reverse().map(incident => (
                 <div key={incident.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white">{incident.title}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{incident.severity} Öncelik</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      incident.severity === 'Kritik' ? 'bg-red-100 dark:bg-red-900/30' :
+                      incident.severity === 'Yüksek' ? 'bg-orange-100 dark:bg-orange-900/30' :
+                      incident.severity === 'Orta' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                      'bg-emerald-100 dark:bg-emerald-900/30'
+                    }`}>
+                      <AlertTriangle className={`h-5 w-5 ${
+                        incident.severity === 'Kritik' ? 'text-red-600 dark:text-red-400' :
+                        incident.severity === 'Yüksek' ? 'text-orange-600 dark:text-orange-400' :
+                        incident.severity === 'Orta' ? 'text-amber-600 dark:text-amber-400' :
+                        'text-emerald-600 dark:text-emerald-400'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{incident.title}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{incident.severity} Öncelik • {new Date(incident.date).toLocaleDateString('tr-TR')}</p>
+                    </div>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                     incident.status === 'Açık' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
@@ -198,7 +511,12 @@ const stats: Array<{ label: string; value: number; icon: React.ElementType; colo
                   </span>
                 </div>
               ))}
-              {incidents.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Henüz olay bildirimi yok.</p>}
+              {incidents.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-slate-500 dark:text-slate-400">
+                  <CheckCircle2 className="h-10 w-10 mb-2 text-slate-300" />
+                  <p>Henüz olay bildirimi yok.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

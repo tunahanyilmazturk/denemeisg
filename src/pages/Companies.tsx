@@ -3,23 +3,57 @@ import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { DataTable } from '../components/ui/DataTable';
+import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Download, FileText, Search, Edit2, Trash2, Filter, X, Building2 } from 'lucide-react';
 import { Company } from '../types';
 import toast from 'react-hot-toast';
-
 import { PageTransition } from '../components/layout/PageTransition';
 
 export const Companies = () => {
   const { companies, addCompany, updateCompany, deleteCompany } = useStore();
-  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCompany, setCurrentCompany] = useState<Partial<Company>>({});
+  const [showFilters, setShowFilters] = useState(false);
 
-  const filteredCompanies = companies.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.sector.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    paginatedData,
+    sortConfig,
+    handleSort,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilter,
+    clearFilters,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+  } = useDataTable<Company>({
+    data: companies,
+    initialSort: { key: 'name', direction: 'asc' },
+    initialPageSize: 10,
+  });
+
+  // Apply custom filters
+  const filteredCompanies = paginatedData.filter((c) => {
+    const matchesSearch = 
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      c.sector.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.contactPerson.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSector = !filters.sector || filters.sector === 'all' || c.sector === filters.sector;
+    
+    return matchesSearch && matchesSector;
+  });
+
+  // Get unique sectors for filter
+  const uniqueSectors = [...new Set(companies.map(c => c.sector))].sort();
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +86,13 @@ export const Companies = () => {
 
   const handleExportPDF = () => {
     const columns = ['Firma Adı', 'Sektör', 'Yetkili Kişi', 'Telefon', 'E-posta'];
-    const data = filteredCompanies.map(c => [c.name, c.sector, c.contactPerson, c.phone, c.email]);
+    const data = companies.map(c => [c.name, c.sector, c.contactPerson, c.phone, c.email]);
     exportToPDF('Firmalar Listesi', columns, data, 'firmalar');
     toast.success('PDF başarıyla indirildi.');
   };
 
   const handleExportExcel = () => {
-    const data = filteredCompanies.map(c => ({
+    const data = companies.map(c => ({
       'Firma Adı': c.name,
       'Sektör': c.sector,
       'Yetkili Kişi': c.contactPerson,
@@ -71,124 +105,223 @@ export const Companies = () => {
     toast.success('Excel başarıyla indirildi.');
   };
 
+  const columns = [
+    {
+      key: 'name',
+      header: 'Firma Adı',
+      sortable: true,
+      render: (c: Company) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <div className="font-medium text-slate-900 dark:text-white">{c.name}</div>
+            <div className="text-xs text-slate-500">{c.address}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'sector',
+      header: 'Sektör',
+      sortable: true,
+      render: (c: Company) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          {c.sector}
+        </span>
+      ),
+    },
+    {
+      key: 'contactPerson',
+      header: 'Yetkili',
+      sortable: true,
+      render: (c: Company) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-slate-900 dark:text-white">{c.contactPerson}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'phone',
+      header: 'İletişim',
+      render: (c: Company) => (
+        <div className="flex flex-col">
+          <span className="text-slate-900 dark:text-white">{c.phone}</span>
+          <span className="text-slate-500 dark:text-slate-400 text-xs">{c.email}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'createdAt',
+      header: 'Kayıt Tarihi',
+      sortable: true,
+      render: (c: Company) => new Date(c.createdAt).toLocaleDateString('tr-TR'),
+    },
+    {
+      key: 'actions',
+      header: 'İşlemler',
+      width: '100px',
+      render: (c: Company) => (
+        <div className="flex items-center justify-end gap-2">
+          <button 
+            onClick={() => openEditModal(c)} 
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+          <button 
+            onClick={() => handleDelete(c.id)} 
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const hasActiveFilters = searchTerm || filters.sector;
+
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Firmalar</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">Sistemde kayıtlı firmaları yönetin.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
-            <Download className="h-4 w-4" /> Excel
-          </Button>
-          <Button variant="secondary" onClick={handleExportPDF} className="gap-2">
-            <FileText className="h-4 w-4" /> PDF
-          </Button>
-          <Button onClick={() => { setCurrentCompany({}); setIsModalOpen(true); }} className="gap-2">
-            <Plus className="h-4 w-4" /> Yeni Firma
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">
-        <div className="p-5 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              placeholder="Firma adı veya sektör ara..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+          <div>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+              Firmalar
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">
+              Sistemde kayıtlı firmaları yönetin.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
+              <Download className="h-4 w-4" /> Excel
+            </Button>
+            <Button variant="secondary" onClick={handleExportPDF} className="gap-2">
+              <FileText className="h-4 w-4" /> PDF
+            </Button>
+            <Button onClick={() => { setCurrentCompany({}); setIsModalOpen(true); }} className="gap-2">
+              <Plus className="h-4 w-4" /> Yeni Firma
+            </Button>
           </div>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
-              <tr>
-                <th className="px-6 py-3">Firma Adı</th>
-                <th className="px-6 py-3">Sektör</th>
-                <th className="px-6 py-3">Yetkili</th>
-                <th className="px-6 py-3">İletişim</th>
-                <th className="px-6 py-3 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredCompanies.map((company) => (
-                <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{company.name}</td>
-                  <td className="px-6 py-4">{company.sector}</td>
-                  <td className="px-6 py-4">{company.contactPerson}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span>{company.phone}</span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">{company.email}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEditModal(company)} className="p-1 text-blue-600 hover:bg-blue-50 rounded dark:text-blue-400 dark:hover:bg-blue-900/30">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDelete(company.id)} className="p-1 text-red-600 hover:bg-red-50 rounded dark:text-red-400 dark:hover:bg-red-900/30">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredCompanies.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Kayıt bulunamadı.</td>
-                </tr>
+
+        {/* Search & Filters */}
+        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input 
+                placeholder="Firma adı, sektör veya yetkili ara..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`gap-2 ${showFilters ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+              >
+                <Filter className="h-4 w-4" />
+                Filtreler
+                {hasActiveFilters && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button variant="ghost" onClick={clearFilters} className="gap-2 text-slate-500">
+                  <X className="h-4 w-4" />
+                  Temizle
+                </Button>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title={currentCompany.id ? "Firmayı Düzenle" : "Yeni Firma Ekle"}
-      >
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Firma Adı</label>
-            <Input required value={currentCompany.name || ''} onChange={e => setCurrentCompany({...currentCompany, name: e.target.value})} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Sektör</label>
-            <Input required value={currentCompany.sector || ''} onChange={e => setCurrentCompany({...currentCompany, sector: e.target.value})} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Yetkili Kişi</label>
-            <Input required value={currentCompany.contactPerson || ''} onChange={e => setCurrentCompany({...currentCompany, contactPerson: e.target.value})} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Sektör
+                </label>
+                <select
+                  value={filters.sector || 'all'}
+                  onChange={(e) => setFilter('sector', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Sektörler</option>
+                  {uniqueSectors.map(sector => (
+                    <option key={sector} value={sector}>{sector}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Data Table */}
+        <DataTable
+          data={filteredCompanies}
+          columns={columns}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalItems={totalItems}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          keyExtractor={(c) => c.id}
+          emptyMessage="Firma kaydı bulunamadı."
+        />
+
+        {/* Add/Edit Modal */}
+        <Modal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          title={currentCompany.id ? "Firmayı Düzenle" : "Yeni Firma Ekle"}
+        >
+          <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Telefon</label>
-              <Input required value={currentCompany.phone || ''} onChange={e => setCurrentCompany({...currentCompany, phone: e.target.value})} />
+              <label className="text-sm font-medium">Firma Adı</label>
+              <Input required value={currentCompany.name || ''} onChange={e => setCurrentCompany({...currentCompany, name: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">E-posta</label>
-              <Input required type="email" value={currentCompany.email || ''} onChange={e => setCurrentCompany({...currentCompany, email: e.target.value})} />
+              <label className="text-sm font-medium">Sektör</label>
+              <Input required value={currentCompany.sector || ''} onChange={e => setCurrentCompany({...currentCompany, sector: e.target.value})} />
             </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Adres</label>
-            <Input required value={currentCompany.address || ''} onChange={e => setCurrentCompany({...currentCompany, address: e.target.value})} />
-          </div>
-          <div className="pt-4 flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>İptal</Button>
-            <Button type="submit">Kaydet</Button>
-          </div>
-        </form>
-      </Modal>
-    </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Yetkili Kişi</label>
+              <Input required value={currentCompany.contactPerson || ''} onChange={e => setCurrentCompany({...currentCompany, contactPerson: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Telefon</label>
+                <Input required value={currentCompany.phone || ''} onChange={e => setCurrentCompany({...currentCompany, phone: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">E-posta</label>
+                <Input required type="email" value={currentCompany.email || ''} onChange={e => setCurrentCompany({...currentCompany, email: e.target.value})} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Adres</label>
+              <Input required value={currentCompany.address || ''} onChange={e => setCurrentCompany({...currentCompany, address: e.target.value})} />
+            </div>
+            <div className="pt-4 flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>İptal</Button>
+              <Button type="submit">Kaydet</Button>
+            </div>
+          </form>
+        </Modal>
+      </div>
     </PageTransition>
   );
 };
