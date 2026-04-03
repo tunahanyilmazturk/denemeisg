@@ -48,6 +48,9 @@ interface AppState {
   updateSystemSettings: (settings: Partial<SystemSettings>) => void;
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
+  // Sidebar
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
   // ...existing actions
   addCompany: (company: Company) => void;
   updateCompany: (company: Company) => void;
@@ -224,6 +227,8 @@ export const useStore = create<AppState>()(
       updateUserProfile: (profile) => set((state) => ({
         userProfile: { ...state.userProfile, ...profile },
       })),
+      sidebarCollapsed: false,
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       addCompany: (company) => set((state) => ({ companies: [...state.companies, company] })),
       updateCompany: (company) => set((state) => ({
         companies: state.companies.map((c) => (c.id === company.id ? company : c)),
@@ -280,6 +285,7 @@ export const useStore = create<AppState>()(
         systemSettings: state.systemSettings,
         notificationSettings: state.notificationSettings,
         userProfile: state.userProfile,
+        sidebarCollapsed: state.sidebarCollapsed,
       }),
     }
   )
