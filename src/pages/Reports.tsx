@@ -216,7 +216,7 @@ export const Reports = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl p-5 border border-slate-200/60 dark:border-slate-800/60 hover:shadow-lg transition-all duration-300"
+      className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all duration-300"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -371,7 +371,7 @@ export const Reports = () => {
             {/* Charts Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Monthly Incident Trend */}
-              <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl p-5 border border-slate-200/60 dark:border-slate-800/60">
+              <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white">
                     Aylık Olay Trendi
@@ -411,7 +411,7 @@ export const Reports = () => {
               </div>
 
               {/* Company Personnel Distribution */}
-              <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl p-5 border border-slate-200/60 dark:border-slate-800/60">
+              <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white">
                     Firma Başına Personel
@@ -551,12 +551,12 @@ export const Reports = () => {
             </div>
 
             {/* Training Stats */}
-            <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl p-5 border border-slate-200/60 dark:border-slate-800/60">
+            <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
               <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white mb-4">
                 Eğitim İstatistikleri
               </h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                       <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -571,7 +571,7 @@ export const Reports = () => {
                   </span>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
                       <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -586,7 +586,7 @@ export const Reports = () => {
                   </span>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                       <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />

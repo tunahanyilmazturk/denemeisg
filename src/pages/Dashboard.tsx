@@ -332,7 +332,7 @@ export const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border border-amber-200 dark:border-amber-800/50 p-5"
+            className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border border-amber-200 dark:border-amber-800/50 p-5 shadow-sm"
           >
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -363,7 +363,7 @@ export const Dashboard = () => {
         )}
 
         {/* KPI Progress Bars */}
-        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5">
+        <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Target className="h-5 w-5 text-slate-500" />
             <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Performans KPI'ları</h2>
@@ -400,7 +400,7 @@ export const Dashboard = () => {
             >
               <Link
                 to={action.to}
-                className="flex items-center gap-3 p-4 bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl border border-slate-200/60 dark:border-slate-800/60 hover:shadow-lg hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-300 group"
+                className="flex items-center gap-3 p-4 bg-white dark:bg-[#09090b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-300 group"
               >
                 <div className={`p-2 rounded-xl ${action.color.replace('text-', 'bg-')}/10 ${action.color} group-hover:scale-110 transition-transform`}>
                   <action.icon className="h-5 w-5" />
@@ -432,7 +432,7 @@ export const Dashboard = () => {
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Incident Severity Distribution */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <PieChartIcon className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Şiddet Dağılımı</h2>
@@ -475,7 +475,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Incident Trends */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <BarChart3 className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Aylık Olay Trendi</h2>
@@ -506,7 +506,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Risk Distribution */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <ShieldAlert className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Risk Dağılımı</h2>
@@ -552,7 +552,7 @@ export const Dashboard = () => {
         {/* Charts Row 2 & Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Incident Status */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <ListTodo className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Olay Durumları</h2>
@@ -578,7 +578,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Training Completion */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-2 mb-5">
               <GraduationCap className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Eğitim Durumları</h2>
@@ -623,7 +623,7 @@ export const Dashboard = () => {
         {/* Lists Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Upcoming Trainings */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-slate-500" />
@@ -664,7 +664,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Recent Incidents */}
-          <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-md transition-all duration-300">
+          <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <FileWarning className="h-5 w-5 text-slate-500" />
@@ -716,7 +716,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Company Comparison Chart */}
-        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5 hover:shadow-md transition-all duration-300">
+        <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-all duration-300">
           <div className="flex items-center gap-2 mb-5">
             <Building2 className="h-5 w-5 text-slate-500" />
             <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Firma Karşılaştırması</h2>

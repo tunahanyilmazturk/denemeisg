@@ -5,9 +5,9 @@ import { Header } from './Header';
 
 export const Layout = () => {
   return (
-    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#09090b] font-sans text-slate-900 dark:text-slate-100 transition-colors duration-200 relative">
+    <div className="flex h-screen bg-slate-50 dark:bg-[#09090b] font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300 relative">
       {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-transparent to-purple-50/50 dark:from-indigo-900/10 dark:via-transparent dark:to-purple-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/30 via-transparent to-purple-50/30 dark:from-indigo-900/10 dark:via-transparent dark:to-purple-900/10 pointer-events-none" />
       
       <div className="z-10 flex h-full w-full">
         <Sidebar />

@@ -119,7 +119,7 @@ export const Sidebar = () => {
   return (
     <aside 
       className={cn(
-        "bg-white/40 dark:bg-[#09090b]/40 backdrop-blur-3xl border-r border-slate-200/50 dark:border-slate-800/50 flex flex-col h-full transition-all duration-300 relative overflow-hidden",
+        "bg-white dark:bg-[#09090b] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full transition-all duration-300 relative overflow-hidden",
         sidebarCollapsed ? "w-20" : "w-64"
       )}
     >
@@ -127,7 +127,7 @@ export const Sidebar = () => {
       
       {/* Header with Logo */}
       <div className={cn(
-        "relative flex items-center border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300",
+        "relative flex items-center border-b border-slate-200 dark:border-slate-800 transition-all duration-300",
         sidebarCollapsed ? "h-16 justify-center px-2" : "h-16 px-6"
       )}>
         <div className="flex items-center gap-3">
@@ -154,7 +154,7 @@ export const Sidebar = () => {
         <button
           onClick={toggleSidebar}
           className={cn(
-            "absolute p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm",
+            "absolute p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm border border-slate-200 dark:border-slate-700",
             sidebarCollapsed ? "right-2 top-1/2 -translate-y-1/2" : "right-4 top-1/2 -translate-y-1/2"
           )}
         >
@@ -206,8 +206,8 @@ export const Sidebar = () => {
                       <div className={cn(
                         "relative z-10 p-2 rounded-lg transition-all duration-300 flex-shrink-0",
                         active 
-                          ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" 
-                          : "bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-500 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                          ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400" 
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:group-hover:bg-indigo-500/10 dark:group-hover:text-indigo-400"
                       )}>
                         <item.icon className="h-5 w-5" />
                         {badge !== undefined && badge > 0 && (
@@ -230,12 +230,12 @@ export const Sidebar = () => {
       
       {/* User Profile Card */}
       <div className={cn(
-        "relative border-t border-slate-200/50 dark:border-slate-800/50 transition-all duration-300",
+        "relative border-t border-slate-200 dark:border-slate-800 transition-all duration-300",
         sidebarCollapsed ? "p-3" : "p-4"
       )}>
         <Tooltip content={`${userProfile.name} - ${userProfile.role}`} show={sidebarCollapsed}>
           <div className={cn(
-            "flex items-center gap-3 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 p-2",
+            "flex items-center gap-3 rounded-xl bg-slate-100 dark:bg-slate-800 p-2",
             sidebarCollapsed ? "justify-center" : ""
           )}>
             {/* Avatar */}
@@ -276,7 +276,7 @@ export const Sidebar = () => {
       
       {/* Settings Link (Only in collapsed mode) */}
       {sidebarCollapsed && (
-        <div className="p-2 border-t border-slate-200/50 dark:border-slate-800/50">
+        <div className="p-2 border-t border-slate-200 dark:border-slate-800">
           <Tooltip content="Ayarlar" show={true}>
             <NavLink
               to="/settings"
@@ -292,7 +292,7 @@ export const Sidebar = () => {
                   {isActive && (
                     <motion.div
                       layoutId="activeNavSettings"
-                      className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-indigo-600/5 dark:from-indigo-500/20 dark:to-indigo-600/10 rounded-xl border border-indigo-500/20 dark:border-indigo-500/30"
+                      className="absolute inset-0 bg-indigo-100 dark:from-indigo-500/20 dark:to-indigo-600/10 rounded-xl border border-indigo-200 dark:border-indigo-500/30"
                       initial={false}
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
@@ -300,8 +300,8 @@ export const Sidebar = () => {
                   <div className={cn(
                     "relative z-10 p-2 rounded-lg transition-all duration-300",
                     isActive 
-                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" 
-                      : "bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-500 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                      ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400" 
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:group-hover:bg-indigo-500/10 dark:group-hover:text-indigo-400"
                   )}>
                     <Settings className="h-5 w-5" />
                   </div>
