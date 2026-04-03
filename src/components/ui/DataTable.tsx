@@ -5,7 +5,7 @@ interface DataTableProps<T> {
   data: T[];
   columns: Array<{
     key: keyof T | string;
-    header: string;
+    header: string | React.ReactNode | (() => React.ReactNode);
     render?: (item: T) => React.ReactNode;
     sortable?: boolean;
     width?: string;
@@ -67,7 +67,7 @@ export function DataTable<T extends Record<string, any>>({
                     onClick={() => column.sortable && onSort && onSort(column.key as keyof T)}
                   >
                     <div className={`flex items-center gap-1 group ${column.sortable ? 'select-none' : ''}`}>
-                      {column.header}
+                      {typeof column.header === 'function' ? column.header() : column.header}
                       {column.sortable && getSortIcon(column.key)}
                     </div>
                   </th>

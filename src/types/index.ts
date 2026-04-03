@@ -20,6 +20,51 @@ export interface Company {
 }
 
 export type PersonnelClass = 'A' | 'B' | 'C';
+export type PersonnelStatus = 'Aktif' | 'Pasif' | 'İstifa Etti';
+export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | '0+';
+
+// ISG Personel Rolleri
+export type PersonnelRole =
+  // İSG Profesyonelleri
+  | 'İşyeri Hekimi'
+  | 'İş Güvenliği Uzmanı'
+  | 'İşyeri Hemşiresi'
+  | 'Sağlık Teknikeri'
+  | 'İşyeri Hekimi Yardımcısı'
+  | 'İş Güvenliği Teknikeri'
+  | 'İşyeri Hekimi Asistanı'
+  // Yönetim
+  | 'Müdür'
+  | 'Genel Müdür'
+  | 'Şantiye Şefi'
+  | 'Bölge Müdürü'
+  | 'İşletme Müdürü'
+  | 'Fabrika Müdürü'
+  // Teknik
+  | 'Mühendis'
+  | 'Tekniker'
+  | 'Teknisyen'
+  | 'Mimar'
+  // Üretim/İşçi
+  | 'Usta'
+  | 'Kalfa'
+  | 'İşçi'
+  | 'Operatör'
+  | 'Üretim Personeli'
+  // Destek
+  | 'Sekreter'
+  | 'Yönetici Asistanı'
+  | 'Muhasebeci'
+  | 'İnsan Kaynakları'
+  | 'Satış Temsilcisi'
+  | 'Sürücü'
+  | 'Güvenlik Görevlisi'
+  | 'Temizlik Personeli'
+  // Diğer
+  | 'Stajyer'
+  | 'Geçici İşçi'
+  | 'Taşeron Personeli'
+  | 'Diğer';
 
 export interface Personnel {
   id: string;
@@ -28,10 +73,39 @@ export interface Personnel {
   tcNo: string;
   role: string;
   class?: PersonnelClass;
+  status?: PersonnelStatus;
   assignedCompanyId?: string;
   phone: string;
   email: string;
   startDate: string;
+  endDate?: string;
+  birthDate?: string;
+  bloodType?: BloodType;
+  avatar?: string;
+  address?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  education?: string;
+  certifications?: string[];
+  medicalExams?: MedicalExam[];
+  ppeRecords?: PPERecord[];
+}
+
+export interface MedicalExam {
+  id: string;
+  date: string;
+  type: string;
+  result: string;
+  nextExamDate?: string;
+  notes?: string;
+}
+
+export interface PPERecord {
+  id: string;
+  ppeType: PPEType;
+  issuedDate: string;
+  expiryDate?: string;
+  status: PPEStatus;
 }
 
 export type IncidentType = 'İş Kazası' | 'Ramak Kala' | 'Meslek Hastalığı' | 'Çevre Olayı' | 'Maddi Hasarlı Olay';
@@ -40,7 +114,7 @@ export type InjuryType = 'Kırık-Çıkık' | 'Çatlak' | 'Ezilme' | 'Sıyrık' 
 
 export type SeverityLevel = 'Önemsiz' | '0-1 Gün' | '1-2 Gün' | '3 Gün ve Sonrası' | 'Minör' | 'Ciddi/Majör';
 
-export type BodyPart = 'Baş' | 'Yüz' | 'Göz' | 'El-El Bileği' | 'Parmak' | 'Kol-Omuz' | 'Boyun' | 'Ayak-Ayak Bileği' | 'Bacak' | 'Bel' | 'İç organlar' | 'Göğüs-karın' | 'Omurga' | 'Diğer';
+export type BodyPart = 'Baş' | 'Yüz' | 'Göz' | 'El-El Bileği' | 'Parmak' | 'Kol-Omuz' | 'Boyun' | 'Ayak-Ayak Bileği' | 'Bacak' | 'Bel' | 'İç Organlar' | 'Göğüs-Karın' | 'Omurga' | 'Diğer';
 
 export interface Incident {
   id: string;
@@ -55,7 +129,7 @@ export interface Incident {
   type?: IncidentType;
   affectedBodyPart?: string;
   rootCause?: string;
-  // Revde Tedavi Bilgileri
+  // Revirde Tedavi Bilgileri
   injuryTypes?: InjuryType[];
   severityLevel?: SeverityLevel;
   treatmentInfo?: string;
@@ -96,6 +170,7 @@ export interface Training {
   duration: number; // saat cinsinden
   participants: string[]; // personel ID'leri
   status: TrainingStatus;
+  description?: string;
   createdAt: string;
 }
 
@@ -120,5 +195,50 @@ export interface Risk {
   responsible: string;
   status: RiskStatus;
   date: string;
+}
+
+// Advanced Definitions System
+export interface Sector {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface JobDefinition {
+  id: string;
+  sectorId: string;
+  name: string;
+  description?: string;
+  riskLevel?: Severity;
+  createdAt: string;
+}
+
+export interface EquipmentDefinition {
+  id: string;
+  sectorId: string;
+  name: string;
+  category?: 'PPE' | 'Machinery' | 'Tool' | 'Other';
+  riskAssociated?: string[];
+  createdAt: string;
+}
+
+export interface LocationDefinition {
+  id: string;
+  companyId?: string;
+  name: string;
+  type?: 'Office' | 'Warehouse' | 'Site' | 'Other';
+  riskLevel?: Severity;
+  createdAt: string;
+}
+
+export interface IncidentReasonDefinition {
+  id: string;
+  sectorId?: string;
+  name: string;
+  category?: 'Human' | 'Equipment' | 'Environment' | 'Method';
+  commonInjuries?: InjuryType[];
+  createdAt: string;
 }
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Company, Personnel, Incident, Training, PPE, Risk } from '../types';
+import { Company, Personnel, Incident, Training, PPE, Risk, Sector, JobDefinition, EquipmentDefinition, LocationDefinition, IncidentReasonDefinition } from '../types';
+import { mockSectors, mockJobDefinitions, mockEquipmentDefinitions, mockLocationDefinitions, mockIncidentReasonDefinitions } from './mockData';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'tr' | 'en';
@@ -70,6 +71,38 @@ interface AppState {
   addRisk: (risk: Risk) => void;
   updateRisk: (risk: Risk) => void;
   deleteRisk: (id: string) => void;
+  // Advanced Definitions
+  sectors: Sector[];
+  jobDefinitions: JobDefinition[];
+  equipmentDefinitions: EquipmentDefinition[];
+  locationDefinitions: LocationDefinition[];
+  incidentReasonDefinitions: IncidentReasonDefinition[];
+  // Sector CRUD
+  addSector: (sector: Sector) => void;
+  updateSector: (sector: Sector) => void;
+  deleteSector: (id: string) => void;
+  // JobDefinition CRUD
+  addJobDefinition: (job: JobDefinition) => void;
+  updateJobDefinition: (job: JobDefinition) => void;
+  deleteJobDefinition: (id: string) => void;
+  getJobsBySector: (sectorId: string) => JobDefinition[];
+  // EquipmentDefinition CRUD
+  addEquipmentDefinition: (equipment: EquipmentDefinition) => void;
+  updateEquipmentDefinition: (equipment: EquipmentDefinition) => void;
+  deleteEquipmentDefinition: (id: string) => void;
+  getEquipmentBySector: (sectorId: string) => EquipmentDefinition[];
+  // LocationDefinition CRUD
+  addLocationDefinition: (location: LocationDefinition) => void;
+  updateLocationDefinition: (location: LocationDefinition) => void;
+  deleteLocationDefinition: (id: string) => void;
+  getLocationsByCompany: (companyId: string) => LocationDefinition[];
+  getGlobalLocations: () => LocationDefinition[];
+  // IncidentReasonDefinition CRUD
+  addIncidentReasonDefinition: (reason: IncidentReasonDefinition) => void;
+  updateIncidentReasonDefinition: (reason: IncidentReasonDefinition) => void;
+  deleteIncidentReasonDefinition: (id: string) => void;
+  getReasonsBySector: (sectorId: string) => IncidentReasonDefinition[];
+  getAllReasons: () => IncidentReasonDefinition[];
 }
 
 const mockCompanies: Company[] = [
@@ -81,6 +114,7 @@ const mockCompanies: Company[] = [
     phone: '0532 123 45 67',
     email: 'ahmet@techinsaat.com',
     address: 'Maslak, İstanbul',
+    locations: ['A Blok', 'B Blok', 'Şantiye Alanı'],
     createdAt: new Date().toISOString(),
   },
   {
@@ -91,6 +125,7 @@ const mockCompanies: Company[] = [
     phone: '0533 987 65 43',
     email: 'ayse@megalojistik.com',
     address: 'Gebze, Kocaeli',
+    locations: ['Soğuk Hava Deposu', 'Yükleme Rampası', 'Ofis'],
     createdAt: new Date().toISOString(),
   },
 ];
@@ -160,13 +195,19 @@ const mockTrainings: Training[] = [
 
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       companies: mockCompanies,
       personnel: mockPersonnel,
       incidents: mockIncidents,
       trainings: mockTrainings,
       ppes: [],
       risks: [],
+      // Advanced Definitions
+      sectors: mockSectors,
+      jobDefinitions: mockJobDefinitions,
+      equipmentDefinitions: mockEquipmentDefinitions,
+      locationDefinitions: mockLocationDefinitions,
+      incidentReasonDefinitions: mockIncidentReasonDefinitions,
       isDarkMode: false,
       toggleDarkMode: () => set((state) => {
         const newMode = !state.isDarkMode;
@@ -271,9 +312,55 @@ export const useStore = create<AppState>()(
       deleteRisk: (id) => set((state) => ({
         risks: state.risks.filter((r) => r.id !== id),
       })),
+      // Sector CRUD
+      addSector: (sector) => set((state) => ({ sectors: [...state.sectors, sector] })),
+      updateSector: (sector) => set((state) => ({
+        sectors: state.sectors.map((s) => (s.id === sector.id ? sector : s)),
+      })),
+      deleteSector: (id) => set((state) => ({
+        sectors: state.sectors.filter((s) => s.id !== id),
+      })),
+      // JobDefinition CRUD
+      addJobDefinition: (job) => set((state) => ({ jobDefinitions: [...state.jobDefinitions, job] })),
+      updateJobDefinition: (job) => set((state) => ({
+        jobDefinitions: state.jobDefinitions.map((j) => (j.id === job.id ? job : j)),
+      })),
+      deleteJobDefinition: (id) => set((state) => ({
+        jobDefinitions: state.jobDefinitions.filter((j) => j.id !== id),
+      })),
+      getJobsBySector: (sectorId) => get().jobDefinitions.filter((j) => j.sectorId === sectorId),
+      // EquipmentDefinition CRUD
+      addEquipmentDefinition: (equipment) => set((state) => ({ equipmentDefinitions: [...state.equipmentDefinitions, equipment] })),
+      updateEquipmentDefinition: (equipment) => set((state) => ({
+        equipmentDefinitions: state.equipmentDefinitions.map((e) => (e.id === equipment.id ? equipment : e)),
+      })),
+      deleteEquipmentDefinition: (id) => set((state) => ({
+        equipmentDefinitions: state.equipmentDefinitions.filter((e) => e.id !== id),
+      })),
+      getEquipmentBySector: (sectorId) => get().equipmentDefinitions.filter((e) => e.sectorId === sectorId),
+      // LocationDefinition CRUD
+      addLocationDefinition: (location) => set((state) => ({ locationDefinitions: [...state.locationDefinitions, location] })),
+      updateLocationDefinition: (location) => set((state) => ({
+        locationDefinitions: state.locationDefinitions.map((l) => (l.id === location.id ? location : l)),
+      })),
+      deleteLocationDefinition: (id) => set((state) => ({
+        locationDefinitions: state.locationDefinitions.filter((l) => l.id !== id),
+      })),
+      getLocationsByCompany: (companyId) => get().locationDefinitions.filter((l) => l.companyId === companyId),
+      getGlobalLocations: () => get().locationDefinitions.filter((l) => !l.companyId),
+      // IncidentReasonDefinition CRUD
+      addIncidentReasonDefinition: (reason) => set((state) => ({ incidentReasonDefinitions: [...state.incidentReasonDefinitions, reason] })),
+      updateIncidentReasonDefinition: (reason) => set((state) => ({
+        incidentReasonDefinitions: state.incidentReasonDefinitions.map((r) => (r.id === reason.id ? reason : r)),
+      })),
+      deleteIncidentReasonDefinition: (id) => set((state) => ({
+        incidentReasonDefinitions: state.incidentReasonDefinitions.filter((r) => r.id !== id),
+      })),
+      getReasonsBySector: (sectorId) => get().incidentReasonDefinitions.filter((r) => r.sectorId === sectorId || !r.sectorId),
+      getAllReasons: () => get().incidentReasonDefinitions,
     }),
     {
-      name: 'hantech-storage',
+      name: 'hantech-storage-v4',
       partialize: (state) => ({
         companies: state.companies,
         personnel: state.personnel,
@@ -286,6 +373,11 @@ export const useStore = create<AppState>()(
         notificationSettings: state.notificationSettings,
         userProfile: state.userProfile,
         sidebarCollapsed: state.sidebarCollapsed,
+        sectors: state.sectors,
+        jobDefinitions: state.jobDefinitions,
+        equipmentDefinitions: state.equipmentDefinitions,
+        locationDefinitions: state.locationDefinitions,
+        incidentReasonDefinitions: state.incidentReasonDefinitions,
       }),
     }
   )

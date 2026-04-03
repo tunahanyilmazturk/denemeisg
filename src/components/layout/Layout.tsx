@@ -14,7 +14,7 @@ export const Layout = () => {
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <Header />
           <main className="flex-1 overflow-y-auto p-4 scroll-smooth">
-            <div className="mx-auto max-w-full">
+            <div className="mx-auto max-w-full h-full">
               <Outlet />
             </div>
           </main>

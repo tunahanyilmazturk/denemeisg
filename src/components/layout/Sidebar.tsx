@@ -40,7 +40,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: AlertTriangle, label: 'Kaza/Olay', path: '/incidents' },
       { icon: GraduationCap, label: 'Eğitimler', path: '/trainings' },
-      { icon: ShieldAlert, label: 'Risk Değerl.', path: '/risks' },
+      { icon: ShieldAlert, label: 'Risk Değerlendirme', path: '/risks' },
       { icon: HardHat, label: 'KKD Takibi', path: '/ppe' },
     ]
   },

@@ -2,18 +2,20 @@ import React, { useState } from 'react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Save, Bell, Shield, Building, User, Moon, Sun, Monitor, Globe, Mail, Key, Upload } from 'lucide-react';
+import { Save, Bell, Shield, Building, User, Moon, Sun, Monitor, Globe, Mail, Key, Upload, Settings as SettingsIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useStore, Theme, Language } from '../store/useStore';
 import { motion, AnimatePresence } from 'motion/react';
+import { AdvancedDefinitionsTab } from '../components/settings/AdvancedDefinitionsTab';
 
-type SettingsTab = 'general' | 'notifications' | 'security' | 'profile';
+type SettingsTab = 'general' | 'notifications' | 'security' | 'profile' | 'advanced';
 
 const tabs = [
   { id: 'general' as SettingsTab, label: 'Genel Ayarlar', icon: Building },
   { id: 'notifications' as SettingsTab, label: 'Bildirimler', icon: Bell },
   { id: 'security' as SettingsTab, label: 'Güvenlik', icon: Shield },
   { id: 'profile' as SettingsTab, label: 'Profil', icon: User },
+  { id: 'advanced' as SettingsTab, label: 'Gelişmiş Tanımlar', icon: SettingsIcon },
 ];
 
 const themeOptions: { value: Theme; label: string; icon: React.ElementType }[] = [
@@ -483,6 +485,19 @@ export const Settings = () => {
                         </Button>
                       </div>
                     </form>
+                  </motion.div>
+                )}
+
+                {/* Advanced Definitions Tab */}
+                {activeTab === 'advanced' && (
+                  <motion.div
+                    key="advanced"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AdvancedDefinitionsTab />
                   </motion.div>
                 )}
               </AnimatePresence>

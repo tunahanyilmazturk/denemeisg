@@ -11,9 +11,12 @@ import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Companies } from './pages/Companies';
 import { PersonnelPage } from './pages/Personnel';
+import { NewPersonnelWizard } from './pages/NewPersonnelWizard';
+import { NewCompanyWizard } from './pages/NewCompanyWizard';
 import { Incidents } from './pages/Incidents';
 import { NewIncidentWizard } from './pages/NewIncidentWizard';
 import { Trainings } from './pages/Trainings';
+import { NewTrainingWizard } from './pages/NewTrainingWizard';
 import { PPEPage } from './pages/PPE';
 import { RisksPage } from './pages/Risks';
 import { Reports } from './pages/Reports';
@@ -30,10 +33,13 @@ const AnimatedRoutes = () => {
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="companies" element={<Companies />} />
+          <Route path="companies/new" element={<NewCompanyWizard />} />
           <Route path="personnel" element={<PersonnelPage />} />
+          <Route path="personnel/new" element={<NewPersonnelWizard />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="incidents/new" element={<NewIncidentWizard />} />
           <Route path="trainings" element={<Trainings />} />
+          <Route path="trainings/new" element={<NewTrainingWizard />} />
           <Route path="ppe" element={<PPEPage />} />
           <Route path="risks" element={<RisksPage />} />
           <Route path="reports" element={<Reports />} />
