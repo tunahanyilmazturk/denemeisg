@@ -64,6 +64,11 @@ export interface Incident {
   returnToWorkDate?: string;
   hospitalReferral?: boolean;
   affectedBodyParts?: BodyPart[];
+  // Önlem Önerileri
+  measuresPersonnel?: string[];
+  measuresEquipment?: string[];
+  measuresEnvironment?: string[];
+  measuresMethod?: string[];
   createdAt: string;
 }
 
