@@ -40,11 +40,11 @@ const StatCard = ({
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: index * 0.1 }}
-    className="group relative bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-6 hover:shadow-xl hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-300 overflow-hidden"
+    className="group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-500 transition-all duration-300 overflow-hidden"
   >
     <div className={`absolute top-0 right-0 w-32 h-32 ${color.replace('text-', 'bg-')} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-full blur-3xl`} />
     <div className="relative flex items-center gap-5">
-      <div className={`p-4 rounded-2xl ${color.replace('text-', 'bg-')}/20 ${color} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+      <div className={`p-4 rounded-2xl ${color.replace('text-', 'bg-')}/20 ${color} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm`}>
         <Icon className="h-7 w-7" />
       </div>
       <div className="flex-1 min-w-0">
@@ -138,7 +138,8 @@ export const Dashboard = () => {
       label: 'Toplam Personel', 
       value: personnel.length, 
       icon: Users, 
-      color: 'text-indigo-600 dark:text-indigo-400',
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
       subtitle: `${companies.length} firmaya atanmış`,
       trend: 'up' as const 
     },
@@ -146,7 +147,8 @@ export const Dashboard = () => {
       label: 'Açık Olaylar', 
       value: openIncidents, 
       icon: AlertTriangle, 
-      color: 'text-red-600 dark:text-red-400',
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
       subtitle: `${incidents.filter(i => i.severity === 'Kritik' || i.severity === 'Yüksek').length} yüksek öncelikli`,
       trend: openIncidents > 0 ? 'down' as const : 'neutral' as const,
       trendValue: openIncidents > 0 ? 'Acil çözüm gerekiyor' : undefined
@@ -155,14 +157,16 @@ export const Dashboard = () => {
       label: 'Aktif KKD Zimmeti', 
       value: activePPEs, 
       icon: HardHat, 
-      color: 'text-emerald-600 dark:text-emerald-400',
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-100',
       subtitle: `${ppes.filter(p => p.status === 'Yıprandı/Kayıp').length} yıpranmış/kayıp`,
     },
     { 
       label: 'Yüksek Riskler', 
       value: highRisks, 
       icon: ShieldAlert, 
-      color: 'text-orange-600 dark:text-orange-400',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
       subtitle: `${mediumRisks} orta, ${riskStats.low} düşük risk`,
       trend: highRisks > 0 ? 'down' as const : 'neutral' as const,
       trendValue: highRisks > 0 ? 'Öncelikli müdahale' : undefined
@@ -239,31 +243,6 @@ export const Dashboard = () => {
     
     return items.slice(0, 4);
   }, [highRisks, openIncidents, trainings, completedTrainings, ppes]);
-
-  // KPI Data
-  const kpiData = useMemo(() => [
-    {
-      label: 'Eğitim Tamamlama',
-      current: completedTrainings,
-      target: trainings.length,
-      percentage: trainings.length > 0 ? (completedTrainings / trainings.length) * 100 : 0,
-      color: 'bg-emerald-500'
-    },
-    {
-      label: 'Olay Çözüm Oranı',
-      current: incidents.filter(i => i.status === 'Kapalı').length,
-      target: incidents.length,
-      percentage: incidents.length > 0 ? (incidents.filter(i => i.status === 'Kapalı').length / incidents.length) * 100 : 0,
-      color: 'bg-blue-500'
-    },
-    {
-      label: 'Risk Giderme',
-      current: risks.filter(r => r.status === 'Giderildi').length,
-      target: risks.length,
-      percentage: risks.length > 0 ? (risks.filter(r => r.status === 'Giderildi').length / risks.length) * 100 : 0,
-      color: 'bg-indigo-500'
-    }
-  ], [completedTrainings, trainings, incidents, risks]);
 
   const handleExportDashboard = () => {
     const data = {
@@ -362,33 +341,6 @@ export const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* KPI Progress Bars */}
-        <div className="bg-white dark:bg-[#09090b] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Target className="h-5 w-5 text-slate-500" />
-            <h2 className="text-lg font-display font-semibold text-slate-900 dark:text-white">Performans KPI'ları</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {kpiData.map((kpi, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{kpi.label}</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">%{kpi.percentage.toFixed(0)}</span>
-                </div>
-                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${kpi.percentage}%` }}
-                    transition={{ duration: 1, delay: idx * 0.2 }}
-                    className={`h-full ${kpi.color} rounded-full`}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{kpi.current} / {kpi.target} tamamlandı</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Quick Actions */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {quickActions.map((action, idx) => (
@@ -400,9 +352,9 @@ export const Dashboard = () => {
             >
               <Link
                 to={action.to}
-                className="flex items-center gap-3 p-4 bg-white dark:bg-[#09090b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-300 group"
+                className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 transition-all duration-300 group"
               >
-                <div className={`p-2 rounded-xl ${action.color.replace('text-', 'bg-')}/10 ${action.color} group-hover:scale-110 transition-transform`}>
+                <div className={`p-2 rounded-xl ${action.color.replace('text-', 'bg-')}/20 ${action.color} group-hover:scale-110 transition-transform shadow-sm`}>
                   <action.icon className="h-5 w-5" />
                 </div>
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
