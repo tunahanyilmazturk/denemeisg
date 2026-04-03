@@ -3,22 +3,53 @@ import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { DataTable } from '../components/ui/DataTable';
+import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2, GraduationCap } from 'lucide-react';
+import { Plus, Download, FileText, Search, Edit2, Trash2, GraduationCap, Filter, X } from 'lucide-react';
 import { Training, TrainingStatus } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
 
 export const Trainings = () => {
   const { trainings, personnel, addTraining, updateTraining, deleteTraining } = useStore();
-  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTraining, setCurrentTraining] = useState<Partial<Training>>({ participants: [] });
+  const [showFilters, setShowFilters] = useState(false);
 
-  const filteredTrainings = trainings.filter(t => 
-    t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    t.trainer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    paginatedData,
+    sortConfig,
+    handleSort,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilter,
+    clearFilters,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+  } = useDataTable<Training>({
+    data: trainings,
+    initialSort: { key: 'date', direction: 'desc' },
+    initialPageSize: 10,
+  });
+
+  // Apply custom filters
+  const filteredTrainings = paginatedData.filter((t) => {
+    const matchesSearch = 
+      t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      t.trainer.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = !filters.status || filters.status === 'all' || t.status === filters.status;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +91,7 @@ export const Trainings = () => {
 
   const handleExportPDF = () => {
     const columns = ['Eğitim Adı', 'Eğitmen', 'Tarih', 'Süre (Saat)', 'Durum', 'Katılımcı Sayısı'];
-    const data = filteredTrainings.map(t => [
+    const data = trainings.map(t => [
       t.title, 
       t.trainer,
       new Date(t.date).toLocaleString('tr-TR'),
@@ -73,7 +104,7 @@ export const Trainings = () => {
   };
 
   const handleExportExcel = () => {
-    const data = filteredTrainings.map(t => ({
+    const data = trainings.map(t => ({
       'Eğitim Adı': t.title,
       'Eğitmen': t.trainer,
       'Tarih': new Date(t.date).toLocaleString('tr-TR'),
@@ -95,9 +126,104 @@ export const Trainings = () => {
     }
   };
 
+  const columns = [
+    {
+      key: 'title',
+      header: 'Eğitim',
+      sortable: true,
+      render: (t: Training) => (
+        <div className="font-medium text-slate-900 dark:text-white">{t.title}</div>
+      ),
+    },
+    {
+      key: 'trainer',
+      header: 'Eğitmen',
+      sortable: true,
+      render: (t: Training) => (
+        <span className="text-slate-700 dark:text-slate-300">{t.trainer}</span>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Tarih & Süre',
+      sortable: true,
+      width: '160px',
+      render: (t: Training) => (
+        <div className="flex flex-col">
+          <span className="text-slate-700 dark:text-slate-300">
+            {new Date(t.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
+          </span>
+          <span className="text-slate-500 dark:text-slate-400 text-xs">{t.duration} Saat</span>
+        </div>
+      ),
+    },
+    {
+      key: 'participants',
+      header: 'Katılımcılar',
+      width: '140px',
+      render: (t: Training) => (
+        <div className="flex -space-x-2 overflow-hidden">
+          {t.participants.slice(0, 3).map(pId => {
+            const p = personnel.find(person => person.id === pId);
+            return (
+              <div 
+                key={pId} 
+                className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-medium" 
+                title={p ? `${p.firstName} ${p.lastName}` : 'Bilinmeyen'}
+              >
+                {p ? p.firstName[0] + p.lastName[0] : '?'}
+              </div>
+            );
+          })}
+          {t.participants.length > 3 && (
+            <div className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-500">
+              +{t.participants.length - 3}
+            </div>
+          )}
+          {t.participants.length === 0 && <span className="text-slate-400 italic">Yok</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Durum',
+      sortable: true,
+      width: '110px',
+      render: (t: Training) => (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(t.status)}`}>
+          {t.status}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'İşlemler',
+      width: '100px',
+      render: (t: Training) => (
+        <div className="flex items-center justify-end gap-2">
+          <button 
+            onClick={() => openEditModal(t)} 
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+          <button 
+            onClick={() => handleDelete(t.id)} 
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const hasActiveFilters = searchTerm || filters.status;
+
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Eğitimler</h1>
@@ -116,88 +242,78 @@ export const Trainings = () => {
           </div>
         </div>
 
-        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">
-          <div className="p-5 border-b border-slate-200/60 dark:border-slate-800/60">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        {/* Search & Filters */}
+        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder="Eğitim adı veya eğitmen ara..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-10"
               />
             </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
-                <tr>
-                  <th className="px-6 py-3">Eğitim</th>
-                  <th className="px-6 py-3">Eğitmen</th>
-                  <th className="px-6 py-3">Tarih & Süre</th>
-                  <th className="px-6 py-3">Katılımcılar</th>
-                  <th className="px-6 py-3">Durum</th>
-                  <th className="px-6 py-3 text-right">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {filteredTrainings.map((training) => (
-                  <tr key={training.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                      {training.title}
-                    </td>
-                    <td className="px-6 py-4">{training.trainer}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span>{new Date(training.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs">{training.duration} Saat</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex -space-x-2 overflow-hidden">
-                        {training.participants.slice(0, 3).map(pId => {
-                          const p = personnel.find(person => person.id === pId);
-                          return (
-                            <div key={pId} className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-gray-900 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-medium" title={p ? `${p.firstName} ${p.lastName}` : 'Bilinmeyen'}>
-                              {p ? p.firstName[0] + p.lastName[0] : '?'}
-                            </div>
-                          );
-                        })}
-                        {training.participants.length > 3 && (
-                          <div className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-gray-900 bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-medium text-gray-500">
-                            +{training.participants.length - 3}
-                          </div>
-                        )}
-                        {training.participants.length === 0 && <span className="text-gray-400 italic">Yok</span>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(training.status)}`}>
-                        {training.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEditModal(training)} className="p-1 text-blue-600 hover:bg-blue-50 rounded dark:text-blue-400 dark:hover:bg-blue-900/30">
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleDelete(training.id)} className="p-1 text-red-600 hover:bg-red-50 rounded dark:text-red-400 dark:hover:bg-red-900/30">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredTrainings.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Kayıt bulunamadı.</td>
-                  </tr>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`gap-2 ${showFilters ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+              >
+                <Filter className="h-4 w-4" />
+                Filtreler
+                {hasActiveFilters && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
                 )}
-              </tbody>
-            </table>
+              </Button>
+              {hasActiveFilters && (
+                <Button variant="ghost" onClick={clearFilters} className="gap-2 text-slate-500">
+                  <X className="h-4 w-4" />
+                  Temizle
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Durum
+                </label>
+                <select
+                  value={filters.status || 'all'}
+                  onChange={(e) => setFilter('status', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Durumlar</option>
+                  <option value="Planlandı">Planlandı</option>
+                  <option value="Tamamlandı">Tamamlandı</option>
+                  <option value="İptal">İptal</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Data Table */}
+        <DataTable
+          data={filteredTrainings}
+          columns={columns}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalItems={totalItems}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          keyExtractor={(t) => t.id}
+          emptyMessage="Eğitim kaydı bulunamadı."
+        />
 
         <Modal 
           isOpen={isModalOpen} 

@@ -4,27 +4,52 @@ import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { DataTable } from '../components/ui/DataTable';
+import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter } from 'lucide-react';
+import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter, X } from 'lucide-react';
 import { Incident, Severity, IncidentStatus } from '../types';
 import toast from 'react-hot-toast';
-
 import { PageTransition } from '../components/layout/PageTransition';
 
 export const Incidents = () => {
   const navigate = useNavigate();
   const { incidents, companies, personnel, addIncident, updateIncident, deleteIncident } = useStore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterSeverity, setFilterSeverity] = useState<Severity | 'Tümü'>('Tümü');
-  const [filterStatus, setFilterStatus] = useState<IncidentStatus | 'Tümü'>('Tümü');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentIncident, setCurrentIncident] = useState<Partial<Incident>>({});
+  const [showFilters, setShowFilters] = useState(false);
 
-  const filteredIncidents = incidents.filter(i => {
-    const matchesSearch = i.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          companies.find(c => c.id === i.companyId)?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSeverity = filterSeverity === 'Tümü' || i.severity === filterSeverity;
-    const matchesStatus = filterStatus === 'Tümü' || i.status === filterStatus;
+  const {
+    paginatedData,
+    sortConfig,
+    handleSort,
+    searchTerm,
+    setSearchTerm,
+    filters,
+    setFilter,
+    clearFilters,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+  } = useDataTable<Incident>({
+    data: incidents,
+    initialSort: { key: 'date', direction: 'desc' },
+    initialPageSize: 10,
+  });
+
+  // Apply custom filters
+  const filteredIncidents = paginatedData.filter((i) => {
+    const matchesSearch = 
+      i.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      companies.find(c => c.id === i.companyId)?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSeverity = !filters.severity || filters.severity === 'all' || i.severity === filters.severity;
+    const matchesStatus = !filters.status || filters.status === 'all' || i.status === filters.status;
     
     return matchesSearch && matchesSeverity && matchesStatus;
   });
@@ -53,7 +78,7 @@ export const Incidents = () => {
 
   const handleExportPDF = () => {
     const columns = ['Başlık', 'Firma', 'Tarih', 'Öncelik', 'Durum'];
-    const data = filteredIncidents.map(i => [
+    const data = incidents.map(i => [
       i.title, 
       companies.find(c => c.id === i.companyId)?.name || '-',
       new Date(i.date).toLocaleString('tr-TR'),
@@ -65,7 +90,7 @@ export const Incidents = () => {
   };
 
   const handleExportExcel = () => {
-    const data = filteredIncidents.map(i => ({
+    const data = incidents.map(i => ({
       'Başlık': i.title,
       'Açıklama': i.description,
       'Firma': companies.find(c => c.id === i.companyId)?.name || '-',
@@ -84,8 +109,8 @@ export const Incidents = () => {
     switch(severity) {
       case 'Kritik': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
       case 'Yüksek': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800';
-      case 'Orta': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
-      case 'Düşük': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800';
+      case 'Orta': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800';
+      case 'Düşük': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -99,120 +124,201 @@ export const Incidents = () => {
     }
   };
 
+  const columns = [
+    {
+      key: 'title',
+      header: 'Olay',
+      sortable: true,
+      render: (i: Incident) => (
+        <div>
+          <p className="font-medium text-slate-900 dark:text-white">{i.title}</p>
+          <p className="text-xs text-slate-500 truncate max-w-xs mt-1">{i.description}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'companyId',
+      header: 'Firma & Konum',
+      sortable: true,
+      render: (i: Incident) => (
+        <div>
+          <p className="font-medium text-slate-900 dark:text-white">{companies.find(c => c.id === i.companyId)?.name}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{i.location}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Tarih',
+      sortable: true,
+      width: '140px',
+      render: (i: Incident) => (
+        <span className="whitespace-nowrap text-slate-700 dark:text-slate-300">
+          {new Date(i.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
+        </span>
+      ),
+    },
+    {
+      key: 'severity',
+      header: 'Öncelik',
+      sortable: true,
+      width: '110px',
+      render: (i: Incident) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getSeverityColor(i.severity)}`}>
+          {i.severity}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Durum',
+      sortable: true,
+      width: '110px',
+      render: (i: Incident) => (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(i.status)}`}>
+          {i.status}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'İşlemler',
+      width: '100px',
+      render: (i: Incident) => (
+        <div className="flex items-center justify-end gap-2">
+          <button 
+            onClick={() => openEditModal(i)} 
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+          >
+            <Edit2 className="h-4 w-4" />
+          </button>
+          <button 
+            onClick={() => handleDelete(i.id)} 
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const hasActiveFilters = searchTerm || filters.severity || filters.status;
+
   return (
     <PageTransition>
-      <div className="space-y-8">
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Kaza ve Olay Bildirimleri</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">İş kazaları ve ramak kala olaylarını takip edin.</p>
+          <div>
+            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+              Kaza ve Olay Bildirimleri
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1.5 text-lg">
+              İş kazaları ve ramak kala olaylarını takip edin.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
+              <Download className="h-4 w-4" /> Excel
+            </Button>
+            <Button variant="secondary" onClick={handleExportPDF} className="gap-2">
+              <FileText className="h-4 w-4" /> PDF
+            </Button>
+            <Button onClick={() => navigate('/incidents/new')} className="gap-2">
+              <AlertCircle className="h-4 w-4" /> Yeni Bildirim
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
-            <Download className="h-4 w-4" /> Excel
-          </Button>
-          <Button variant="secondary" onClick={handleExportPDF} className="gap-2">
-            <FileText className="h-4 w-4" /> PDF
-          </Button>
-          <Button onClick={() => navigate('/incidents/new')} className="gap-2">
-            <AlertCircle className="h-4 w-4" /> Yeni Bildirim
-          </Button>
-        </div>
-      </div>
 
-      <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">
-        <div className="p-5 border-b border-slate-200/60 dark:border-slate-800/60 flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              placeholder="Olay başlığı veya firma ara..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex gap-3">
-            <select 
-              className="flex h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-800 dark:bg-[#09090b]/50 dark:text-slate-50 transition-all duration-200"
-              value={filterSeverity}
-              onChange={(e) => setFilterSeverity(e.target.value as Severity | 'Tümü')}
-            >
-              <option value="Tümü">Tüm Öncelikler</option>
-              <option value="Düşük">Düşük</option>
-              <option value="Orta">Orta</option>
-              <option value="Yüksek">Yüksek</option>
-              <option value="Kritik">Kritik</option>
-            </select>
-            <select 
-              className="flex h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-800 dark:bg-[#09090b]/50 dark:text-slate-50 transition-all duration-200"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as IncidentStatus | 'Tümü')}
-            >
-              <option value="Tümü">Tüm Durumlar</option>
-              <option value="Açık">Açık</option>
-              <option value="İnceleniyor">İnceleniyor</option>
-              <option value="Kapalı">Kapalı</option>
-            </select>
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-800/50 dark:text-gray-400">
-              <tr>
-                <th className="px-6 py-3">Olay</th>
-                <th className="px-6 py-3">Firma & Konum</th>
-                <th className="px-6 py-3">Tarih</th>
-                <th className="px-6 py-3">Öncelik</th>
-                <th className="px-6 py-3">Durum</th>
-                <th className="px-6 py-3 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredIncidents.map((incident) => (
-                <tr key={incident.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900 dark:text-white">{incident.title}</p>
-                    <p className="text-xs text-gray-500 truncate max-w-xs mt-1">{incident.description}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="font-medium">{companies.find(c => c.id === incident.companyId)?.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{incident.location}</p>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {new Date(incident.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getSeverityColor(incident.severity)}`}>
-                      {incident.severity}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(incident.status)}`}>
-                      {incident.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEditModal(incident)} className="p-1 text-blue-600 hover:bg-blue-50 rounded dark:text-blue-400 dark:hover:bg-blue-900/30">
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDelete(incident.id)} className="p-1 text-red-600 hover:bg-red-50 rounded dark:text-red-400 dark:hover:bg-red-900/30">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredIncidents.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Kayıt bulunamadı.</td>
-                </tr>
+        {/* Search & Filters */}
+        <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-5">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input 
+                placeholder="Olay başlığı veya firma ara..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`gap-2 ${showFilters ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+              >
+                <Filter className="h-4 w-4" />
+                Filtreler
+                {hasActiveFilters && (
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                )}
+              </Button>
+              {hasActiveFilters && (
+                <Button variant="ghost" onClick={clearFilters} className="gap-2 text-slate-500">
+                  <X className="h-4 w-4" />
+                  Temizle
+                </Button>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Öncelik
+                </label>
+                <select
+                  value={filters.severity || 'all'}
+                  onChange={(e) => setFilter('severity', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Öncelikler</option>
+                  <option value="Düşük">Düşük</option>
+                  <option value="Orta">Orta</option>
+                  <option value="Yüksek">Yüksek</option>
+                  <option value="Kritik">Kritik</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+                  Durum
+                </label>
+                <select
+                  value={filters.status || 'all'}
+                  onChange={(e) => setFilter('status', e.target.value === 'all' ? '' : e.target.value)}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Durumlar</option>
+                  <option value="Açık">Açık</option>
+                  <option value="İnceleniyor">İnceleniyor</option>
+                  <option value="Kapalı">Kapalı</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+
+        {/* Data Table */}
+        <DataTable
+          data={filteredIncidents}
+          columns={columns}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalItems={totalItems}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          keyExtractor={(i) => i.id}
+          emptyMessage="Olay kaydı bulunamadı."
+        />
 
       <Modal 
         isOpen={isModalOpen} 
