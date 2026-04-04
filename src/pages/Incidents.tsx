@@ -7,12 +7,15 @@ import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Building2, User, Calendar, MapPin, ClipboardList } from 'lucide-react';
-import { Incident, Severity, IncidentStatus } from '../types';
+import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Building2, User, Calendar, MapPin, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Incident, Severity, IncidentStatus, IncidentType } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
 
 type ViewMode = 'grid' | 'list';
+
+// Available incident types
+const INCIDENT_TYPES: IncidentType[] = ['İş Kazası', 'Ramak Kala', 'Meslek Hastalığı', 'Çevre Olayı', 'Maddi Hasarlı Olay'];
 
 export const Incidents = () => {
   const navigate = useNavigate();
@@ -23,9 +26,11 @@ export const Incidents = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedIncidents, setSelectedIncidents] = useState<Set<string>>(new Set());
   const [detailIncidentId, setDetailIncidentId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [incidentToDelete, setIncidentToDelete] = useState<string | null>(null);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
 
   const {
-    paginatedData,
     sortConfig,
     handleSort,
     searchTerm,
@@ -37,27 +42,50 @@ export const Incidents = () => {
     setCurrentPage,
     pageSize,
     setPageSize,
-    totalPages,
-    totalItems,
-    startIndex,
-    endIndex,
   } = useDataTable<Incident>({
     data: incidents,
     initialSort: { key: 'date', direction: 'desc' },
     initialPageSize: 10,
   });
 
-  // Apply custom filters
-  const filteredIncidents = paginatedData.filter((i) => {
-    const matchesSearch = 
-      i.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      companies.find(c => c.id === i.companyId)?.name.toLowerCase().includes(searchTerm.toLowerCase());
+  // Apply custom filters (manual filtering to avoid double-filter bug)
+  const filteredIncidents = useMemo(() => {
+    let result = [...incidents];
+
+    // Apply search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((i) => 
+        i.title.toLowerCase().includes(term) || 
+        companies.find(c => c.id === i.companyId)?.name.toLowerCase().includes(term) ||
+        i.description?.toLowerCase().includes(term) ||
+        i.location?.toLowerCase().includes(term)
+      );
+    }
     
-    const matchesSeverity = !filters.severity || filters.severity === 'all' || i.severity === filters.severity;
-    const matchesStatus = !filters.status || filters.status === 'all' || i.status === filters.status;
+    // Apply filters
+    if (filters.severity && filters.severity !== 'all') {
+      result = result.filter(i => i.severity === filters.severity);
+    }
+    if (filters.status && filters.status !== 'all') {
+      result = result.filter(i => i.status === filters.status);
+    }
+    if (filters.company && filters.company !== 'all') {
+      result = result.filter(i => i.companyId === filters.company);
+    }
+    if (filters.type && filters.type !== 'all') {
+      result = result.filter(i => i.type === filters.type);
+    }
     
-    return matchesSearch && matchesSeverity && matchesStatus;
-  });
+    return result;
+  }, [incidents, searchTerm, filters, companies]);
+
+  // Pagination
+  const totalItems = filteredIncidents.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const displayedIncidents = filteredIncidents.slice(startIndex, endIndex);
 
   // Calculate statistics
   const stats = useMemo(() => ({
@@ -79,9 +107,16 @@ export const Incidents = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Bu olay bildirimini silmek istediğinize emin misiniz?')) {
-      deleteIncident(id);
+    setIncidentToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (incidentToDelete) {
+      deleteIncident(incidentToDelete);
       toast.success('Olay bildirimi başarıyla silindi.');
+      setDeleteModalOpen(false);
+      setIncidentToDelete(null);
     }
   };
 
@@ -90,7 +125,8 @@ export const Incidents = () => {
     setIsModalOpen(true);
   };
 
-  const toggleSelectIncident = (id: string) => {
+  const toggleSelectIncident = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const newSelected = new Set(selectedIncidents);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -101,10 +137,10 @@ export const Incidents = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIncidents.size === filteredIncidents.length) {
+    if (selectedIncidents.size === displayedIncidents.length) {
       setSelectedIncidents(new Set());
     } else {
-      setSelectedIncidents(new Set(filteredIncidents.map(i => i.id)));
+      setSelectedIncidents(new Set(displayedIncidents.map(i => i.id)));
     }
   };
 
@@ -113,11 +149,15 @@ export const Incidents = () => {
       toast.error('Lütfen silmek için olay seçiniz.');
       return;
     }
-    if (window.confirm(`${selectedIncidents.size} olay bildirimini silmek istediğinize emin misiniz?`)) {
-      selectedIncidents.forEach(id => deleteIncident(id));
-      setSelectedIncidents(new Set());
-      toast.success(`${selectedIncidents.size} olay bildirimi başarıyla silindi.`);
-    }
+    setBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = () => {
+    selectedIncidents.forEach(id => deleteIncident(id));
+    const count = selectedIncidents.size;
+    setSelectedIncidents(new Set());
+    setBulkDeleteModalOpen(false);
+    toast.success(`${count} olay bildirimi başarıyla silindi.`);
   };
 
   const getDetailIncident = () => {
@@ -125,30 +165,40 @@ export const Incidents = () => {
   };
 
   const handleExportPDF = () => {
-    const columns = ['Başlık', 'Firma', 'Tarih', 'Öncelik', 'Durum'];
-    const data = incidents.map(i => [
-      i.title, 
-      companies.find(c => c.id === i.companyId)?.name || '-',
-      new Date(i.date).toLocaleString('tr-TR'),
-      i.severity,
-      i.status
-    ]);
+    const columns = ['Başlık', 'Firma', 'Personel', 'Tarih', 'Öncelik', 'Durum', 'Tür'];
+    const data = filteredIncidents.map(i => {
+      const person = personnel.find(p => p.id === i.personnelId);
+      return [
+        i.title, 
+        companies.find(c => c.id === i.companyId)?.name || '-',
+        person ? `${person.firstName} ${person.lastName}` : '-',
+        new Date(i.date).toLocaleString('tr-TR'),
+        i.severity,
+        i.status,
+        i.type || '-'
+      ];
+    });
     exportToPDF('Kaza ve Olay Bildirimleri', columns, data, 'olaylar');
     toast.success('PDF başarıyla indirildi.');
   };
 
   const handleExportExcel = () => {
-    const data = incidents.map(i => ({
-      'Başlık': i.title,
-      'Açıklama': i.description,
-      'Firma': companies.find(c => c.id === i.companyId)?.name || '-',
-      'İlgili Personel': personnel.find(p => p.id === i.personnelId)?.firstName + ' ' + personnel.find(p => p.id === i.personnelId)?.lastName || '-',
-      'Tarih': new Date(i.date).toLocaleString('tr-TR'),
-      'Konum': i.location,
-      'Öncelik': i.severity,
-      'Durum': i.status,
-      'Kayıt Tarihi': new Date(i.createdAt).toLocaleString('tr-TR')
-    }));
+    const data = filteredIncidents.map(i => {
+      const person = personnel.find(p => p.id === i.personnelId);
+      return {
+        'Başlık': i.title,
+        'Açıklama': i.description,
+        'Firma': companies.find(c => c.id === i.companyId)?.name || '-',
+        'İlgili Personel': person ? `${person.firstName} ${person.lastName}` : '-',
+        'Tarih': new Date(i.date).toLocaleString('tr-TR'),
+        'Konum': i.location,
+        'Olay Türü': i.type || '-',
+        'Öncelik': i.severity,
+        'Durum': i.status,
+        'Kök Neden': i.rootCause || '-',
+        'Kayıt Tarihi': new Date(i.createdAt).toLocaleString('tr-TR')
+      };
+    });
     exportToExcel(data, 'olaylar');
     toast.success('Excel başarıyla indirildi.');
   };
@@ -160,6 +210,16 @@ export const Incidents = () => {
       case 'Orta': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800';
       case 'Düşük': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getSeverityDotColor = (severity: Severity) => {
+    switch(severity) {
+      case 'Kritik': return 'bg-red-500';
+      case 'Yüksek': return 'bg-orange-500';
+      case 'Orta': return 'bg-amber-500';
+      case 'Düşük': return 'bg-emerald-500';
+      default: return 'bg-gray-500';
     }
   };
 
@@ -181,7 +241,7 @@ export const Incidents = () => {
       key: 'select',
       header: () => (
         <button onClick={toggleSelectAll} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-          {selectedIncidents.size === filteredIncidents.length && filteredIncidents.length > 0 ? (
+          {selectedIncidents.size === displayedIncidents.length && displayedIncidents.length > 0 ? (
             <CheckSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           ) : (
             <Square className="h-4 w-4 text-slate-400" />
@@ -193,7 +253,7 @@ export const Incidents = () => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            toggleSelectIncident(i.id);
+            toggleSelectIncident(i.id, e);
           }}
           className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
         >
@@ -210,20 +270,49 @@ export const Incidents = () => {
       header: 'Olay',
       sortable: true,
       render: (i: Incident) => (
-        <div>
-          <p className="font-medium text-slate-900 dark:text-white">{i.title}</p>
-          <p className="text-xs text-slate-500 truncate max-w-xs mt-1">{i.description}</p>
+        <div className="flex items-start gap-2">
+          <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${getSeverityDotColor(i.severity)}`} title={i.severity} />
+          <div>
+            <p className="font-medium text-slate-900 dark:text-white">{i.title}</p>
+            <p className="text-xs text-slate-500 truncate max-w-xs mt-1">{i.description}</p>
+          </div>
         </div>
       ),
     },
     {
       key: 'companyId',
-      header: 'Firma & Konum',
+      header: 'Firma & Personel',
       sortable: true,
+      render: (i: Incident) => {
+        const person = personnel.find(p => p.id === i.personnelId);
+        return (
+          <div>
+            <div className="flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 text-slate-400" />
+              <p className="font-medium text-slate-900 dark:text-white text-sm">{companies.find(c => c.id === i.companyId)?.name}</p>
+            </div>
+            {person && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <User className="h-3 w-3 text-slate-400" />
+                <p className="text-xs text-slate-500">{person.firstName} {person.lastName}</p>
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'location',
+      header: 'Konum & Tür',
       render: (i: Incident) => (
         <div>
-          <p className="font-medium text-slate-900 dark:text-white">{companies.find(c => c.id === i.companyId)?.name}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{i.location}</p>
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-slate-400" />
+            <p className="text-sm text-slate-700 dark:text-slate-300">{i.location}</p>
+          </div>
+          {i.type && (
+            <p className="text-xs text-slate-500 mt-1">{i.type}</p>
+          )}
         </div>
       ),
     },
@@ -233,9 +322,12 @@ export const Incidents = () => {
       sortable: true,
       width: '140px',
       render: (i: Incident) => (
-        <span className="whitespace-nowrap text-slate-700 dark:text-slate-300">
-          {new Date(i.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+          <span className="whitespace-nowrap text-slate-700 dark:text-slate-300 text-sm">
+            {new Date(i.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}
+          </span>
+        </div>
       ),
     },
     {
@@ -301,7 +393,7 @@ export const Incidents = () => {
     },
   ];
 
-  const hasActiveFilters = searchTerm || filters.severity || filters.status;
+  const hasActiveFilters = searchTerm || filters.severity || filters.status || filters.company || filters.type;
 
   return (
     <PageTransition>
@@ -395,7 +487,7 @@ export const Incidents = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder="Olay başlığı veya firma ara..." 
+                placeholder="Olay başlığı, firma, açıklama veya konum ara..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -449,14 +541,14 @@ export const Incidents = () => {
 
           {/* Filter Options */}
           {showFilters && (
-            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Firma
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5" /> Firma
                 </label>
                 <select
                   value={filters.company || 'all'}
-                  onChange={(e) => setFilter('company', e.target.value === 'all' ? '' : e.target.value)}
+                  onChange={(e) => { setFilter('company', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
                   className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Firmalar</option>
@@ -466,12 +558,12 @@ export const Incidents = () => {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Öncelik
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" /> Öncelik
                 </label>
                 <select
                   value={filters.severity || 'all'}
-                  onChange={(e) => setFilter('severity', e.target.value === 'all' ? '' : e.target.value)}
+                  onChange={(e) => { setFilter('severity', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
                   className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Öncelikler</option>
@@ -482,18 +574,33 @@ export const Incidents = () => {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Durum
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <CheckSquare className="h-3.5 w-3.5" /> Durum
                 </label>
                 <select
                   value={filters.status || 'all'}
-                  onChange={(e) => setFilter('status', e.target.value === 'all' ? '' : e.target.value)}
+                  onChange={(e) => { setFilter('status', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
                   className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Durumlar</option>
                   <option value="Açık">Açık</option>
                   <option value="İnceleniyor">İnceleniyor</option>
                   <option value="Kapalı">Kapalı</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <ClipboardList className="h-3.5 w-3.5" /> Olay Türü
+                </label>
+                <select
+                  value={filters.type || 'all'}
+                  onChange={(e) => { setFilter('type', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Türler</option>
+                  {INCIDENT_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -503,7 +610,7 @@ export const Incidents = () => {
         {/* Data View */}
         {viewMode === 'list' ? (
           <DataTable
-            data={filteredIncidents}
+            data={displayedIncidents}
             columns={columns}
             sortConfig={sortConfig}
             onSort={handleSort}
@@ -519,80 +626,104 @@ export const Incidents = () => {
             emptyMessage="Olay kaydı bulunamadı."
           />
         ) : (
-          <div className="space-y-4">
-            {filteredIncidents.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-16 text-center">
-                <AlertCircle className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Olay kaydı bulunamadı.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredIncidents.map((incident) => {
-                  const company = companies.find(c => c.id === incident.companyId);
-                  return (
-                    <div
-                      key={incident.id}
-                      className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer"
-                      onClick={() => setDetailIncidentId(incident.id)}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-start gap-2 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-white shadow-lg shrink-0">
-                              <AlertCircle className="h-5 w-5" />
+          <>
+            <div className="bg-white/60 dark:bg-[#09090b]/60 backdrop-blur-2xl rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-800/60 p-6">
+              {displayedIncidents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                    <AlertCircle className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">Olay kaydı bulunamadı.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">Yeni olay bildirimi eklemek için yukarıdaki butonu kullanın.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {displayedIncidents.map((incident) => {
+                    const company = companies.find(c => c.id === incident.companyId);
+                    const person = personnel.find(p => p.id === incident.personnelId);
+                    const isSelected = selectedIncidents.has(incident.id);
+                    
+                    return (
+                      <div
+                        key={incident.id}
+                        className={`group relative bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/50 rounded-2xl p-5 border-2 transition-all cursor-pointer hover:shadow-xl ${
+                          isSelected
+                            ? 'border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/20'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'
+                        }`}
+                        onClick={() => setDetailIncidentId(incident.id)}
+                      >
+                        {/* Selection & Severity */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className={`w-3 h-3 rounded-full ${getSeverityDotColor(incident.severity)}`} title={incident.severity} />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelectIncident(incident.id, e);
+                            }}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            ) : (
+                              <Square className="h-5 w-5 text-slate-400 group-hover:text-slate-600" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Title & Description */}
+                        <div className="mb-4">
+                          <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2 mb-2">{incident.title}</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{incident.description}</p>
+                        </div>
+
+                        {/* Info */}
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <Building2 className="h-4 w-4 text-slate-400" />
+                            <span className="truncate">{company?.name}</span>
+                          </div>
+                          {person && (
+                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                              <User className="h-4 w-4 text-slate-400" />
+                              <span>{person.firstName} {person.lastName}</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-slate-900 dark:text-white line-clamp-2">{incident.title}</h3>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{incident.description}</p>
-                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <MapPin className="h-4 w-4 text-slate-400" />
+                            <span>{incident.location}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <Calendar className="h-4 w-4 text-slate-400" />
+                            <span>{new Date(incident.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                           </div>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSelectIncident(incident.id);
-                          }}
-                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
-                        >
-                          {selectedIncidents.has(incident.id) ? (
-                            <CheckSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                          ) : (
-                            <Square className="h-5 w-5 text-slate-400" />
-                          )}
-                        </button>
-                      </div>
 
-                      <div className="space-y-2 mb-3">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <Building2 className="h-4 w-4 text-slate-400" />
-                          <span className="truncate">{company?.name}</span>
+                        {/* Badges */}
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex gap-2 flex-wrap">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${getSeverityColor(incident.severity)}`}>
+                              {incident.severity}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatusColor(incident.status)}`}>
+                              {incident.status}
+                            </span>
+                            {incident.type && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                                {incident.type}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <MapPin className="h-4 w-4 text-slate-400" />
-                          <span>{incident.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <Calendar className="h-4 w-4 text-slate-400" />
-                          <span>{new Date(incident.date).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <div className="flex gap-2">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${getSeverityColor(incident.severity)}`}>
-                            {incident.severity}
-                          </span>
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatusColor(incident.status)}`}>
-                            {incident.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Quick Actions */}
+                        <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               openEditModal(incident);
                             }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+                            className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-all"
                             title="Düzenle"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -602,59 +733,82 @@ export const Incidents = () => {
                               e.stopPropagation();
                               handleDelete(incident.id);
                             }}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                            className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-lg transition-all"
                             title="Sil"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-            {/* Pagination for Grid View */}
+            {/* Grid View Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  {startIndex + 1}-{Math.min(endIndex, totalItems)} / {totalItems} kayıt
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+                <div className="text-sm text-slate-500 dark:text-slate-400">
+                  <span className="font-medium text-slate-900 dark:text-white">{startIndex + 1}-{endIndex}</span>
+                  {' / '}{totalItems} kayıt gösteriliyor
                 </div>
+                
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="h-9 px-2 text-sm rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    Önceki
-                  </Button>
+                    <option value={6}>6</option>
+                    <option value={12}>12</option>
+                    <option value={24}>24</option>
+                    <option value={48}>48</option>
+                  </select>
+
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === page
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-4 h-4 -ml-3" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="flex items-center gap-1 px-2">
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                        Sayfa {currentPage} / {totalPages}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 -ml-3" />
+                    </button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Sonraki
-                  </Button>
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
 
       <Modal 
@@ -720,7 +874,7 @@ export const Incidents = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Öncelik/Şiddet</label>
               <select 
@@ -746,6 +900,19 @@ export const Incidents = () => {
                 <option value="Açık">Açık</option>
                 <option value="İnceleniyor">İnceleniyor</option>
                 <option value="Kapalı">Kapalı</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Olay Türü</label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                value={currentIncident.type || ''}
+                onChange={e => setCurrentIncident({...currentIncident, type: e.target.value as IncidentType})}
+              >
+                <option value="">Seçiniz</option>
+                {INCIDENT_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -780,6 +947,11 @@ export const Incidents = () => {
                   <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium ${getStatusColor(detailIncident.status)}`}>
                     {detailIncident.status}
                   </span>
+                  {detailIncident.type && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      {detailIncident.type}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -894,6 +1066,50 @@ export const Incidents = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Olay Bildirimini Sil"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600 dark:text-slate-400">
+            Bu olay bildirimini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setDeleteModalOpen(false)}>
+              İptal
+            </Button>
+            <Button variant="danger" onClick={confirmDelete} className="gap-2">
+              <Trash2 className="h-4 w-4" /> Sil
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <Modal
+        isOpen={bulkDeleteModalOpen}
+        onClose={() => setBulkDeleteModalOpen(false)}
+        title="Toplu Silme"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600 dark:text-slate-400">
+            <strong>{selectedIncidents.size} olay bildirimini</strong> kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setBulkDeleteModalOpen(false)}>
+              İptal
+            </Button>
+            <Button variant="danger" onClick={confirmBulkDelete} className="gap-2">
+              <Trash2 className="h-4 w-4" /> {selectedIncidents.size} Olay Bildirimini Sil
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
     </PageTransition>

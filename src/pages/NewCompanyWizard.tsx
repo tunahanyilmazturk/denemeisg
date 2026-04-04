@@ -11,25 +11,6 @@ import {
   Mail, Check, X, Info, ClipboardList
 } from 'lucide-react';
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const SECTORS = [
-  'İnşaat',
-  'Lojistik & Taşımacılık',
-  'Sanayi/Üretim',
-  'Enerji',
-  'Tarım & Hayvancılık',
-  'Sağlık & Sosyal Hizmetler',
-  'Gıda & İçecek',
-  'Madencilik',
-  'Kimya & Petrokimya',
-  'Orman & Kağıt',
-  'Denizcilik',
-  'Havacılık',
-  'Otomotiv',
-  'Tekstil & Konfeksiyon',
-  'Perakende & Hizmet',
-  'Diğer',
-];
 
 const selectClass =
   'flex h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50 transition-all';
@@ -103,13 +84,14 @@ const StepItem = ({ num, label, active, completed }: { num: number; label: strin
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export const NewCompanyWizard = () => {
   const navigate = useNavigate();
-  const { addCompany } = useStore();
+  const { addCompany, sectors, locationDefinitions } = useStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Company>>({
     locations: [],
   });
   const [newLocation, setNewLocation] = useState('');
+  const [sectorLocationsAutoAdded, setSectorLocationsAutoAdded] = useState(false);
 
   const totalSteps = 3;
 
@@ -256,11 +238,36 @@ export const NewCompanyWizard = () => {
                     <select
                       className={selectClass}
                       value={formData.sector || ''}
-                      onChange={e => setFormData(p => ({ ...p, sector: e.target.value }))}
+                      onChange={e => {
+                        const selectedSectorName = e.target.value;
+                        setFormData(p => ({ ...p, sector: selectedSectorName }));
+                        
+                        // Auto-populate locations when sector changes
+                        if (selectedSectorName && !sectorLocationsAutoAdded) {
+                          const selectedSector = sectors.find(s => s.name === selectedSectorName);
+                          if (selectedSector) {
+                            // Get sector-specific and global locations
+                            const sectorLocs = locationDefinitions
+                              .filter(loc => loc.sectorId === selectedSector.id || !loc.sectorId)
+                              .map(loc => loc.name);
+                            
+                            setFormData(p => ({
+                              ...p,
+                              sector: selectedSectorName,
+                              locations: sectorLocs
+                            }));
+                            setSectorLocationsAutoAdded(true);
+                            toast.success(`${sectorLocs.length} lokasyon otomatik eklendi. İstediğiniz gibi düzenleyebilirsiniz.`);
+                          }
+                        } else if (!selectedSectorName) {
+                          // Reset if sector cleared
+                          setSectorLocationsAutoAdded(false);
+                        }
+                      }}
                     >
                       <option value="">Sektör Seçiniz</option>
-                      {SECTORS.map(sector => (
-                        <option key={sector} value={sector}>{sector}</option>
+                      {sectors.map(sector => (
+                        <option key={sector.id} value={sector.name}>{sector.name}</option>
                       ))}
                     </select>
                   </div>
@@ -467,13 +474,26 @@ export const NewCompanyWizard = () => {
               )}
             </div>
 
+            {/* Sektöre göre otomatik ekleme bilgisi */}
+            {sectorLocationsAutoAdded && (
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-start gap-3">
+                  <Info className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-emerald-800 dark:text-emerald-200">
+                    <p className="font-semibold mb-1">Sektör Lokasyonları Eklendi</p>
+                    <p className="text-emerald-700 dark:text-emerald-300">Seçtiğiniz sektöre ait lokasyonlar otomatik olarak eklendi. İsterseniz listedeki lokasyonları silebilir veya yeni lokasyonlar ekleyebilirsiniz.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Bilgi notu */}
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-blue-800 dark:text-blue-200">
                   <p className="font-semibold mb-1">Bilgi</p>
-                  <p className="text-blue-700 dark:text-blue-300">Lokasyonları daha sonra da ekleyebilir veya düzenleyebilirsiniz. Firma detay sayfasından lokasyon yönetimi yapabilirsiniz.</p>
+                  <p className="text-blue-700 dark:text-blue-300">Sektör seçtiğinizde ilgili lokasyonlar otomatik eklenir. Bunlara ek olarak manuel lokasyon da ekleyebilirsiniz. Lokasyonları daha sonra düzenlemek de mümkündür.</p>
                 </div>
               </div>
             </div>

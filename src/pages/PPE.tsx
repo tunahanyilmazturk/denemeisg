@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { PPE, PPEType, PPEStatus } from '../types';
-import { Plus, Search, Edit2, Trash2, Download, FileText, HardHat, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, User } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Download, FileText, HardHat, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, User, ChevronLeft, ChevronRight, Package, Shield, AlertTriangle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -25,9 +25,11 @@ export const PPEPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedPPEs, setSelectedPPEs] = useState<Set<string>>(new Set());
   const [detailPPEId, setDetailPPEId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [ppeToDelete, setPPEToDelete] = useState<string | null>(null);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
 
   const {
-    paginatedData,
     sortConfig,
     handleSort,
     searchTerm,
@@ -39,39 +41,96 @@ export const PPEPage = () => {
     setCurrentPage,
     pageSize,
     setPageSize,
-    totalPages,
-    totalItems,
-    startIndex,
-    endIndex,
   } = useDataTable<PPE>({
     data: ppes,
     initialSort: { key: 'issueDate', direction: 'desc' },
     initialPageSize: 10,
   });
 
-  // Apply custom filters
-  const filteredPPEs = paginatedData.filter((p) => {
-    const person = personnel.find(per => per.id === p.personnelId);
-    const personName = person ? `${person.firstName} ${person.lastName}`.toLowerCase() : '';
-    
-    const matchesSearch = 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      p.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      personName.includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = !filters.status || filters.status === 'all' || p.status === filters.status;
-    const matchesType = !filters.type || filters.type === 'all' || p.type === filters.type;
-    
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  // Manual filtering on raw data to avoid double-filter bug
+  const filteredPPEs = useMemo(() => {
+    let result = [...ppes];
+
+    // Search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((p) => {
+        const person = personnel.find(per => per.id === p.personnelId);
+        const personName = person ? `${person.firstName} ${person.lastName}`.toLowerCase() : '';
+        return (
+          p.name.toLowerCase().includes(term) ||
+          p.type.toLowerCase().includes(term) ||
+          personName.includes(term) ||
+          (p.notes && p.notes.toLowerCase().includes(term))
+        );
+      });
+    }
+
+    // Status filter
+    if (filters.status && filters.status !== 'all') {
+      result = result.filter(p => p.status === filters.status);
+    }
+
+    // Type filter
+    if (filters.type && filters.type !== 'all') {
+      result = result.filter(p => p.type === filters.type);
+    }
+
+    // Personnel filter
+    if (filters.personnelId && filters.personnelId !== 'all') {
+      result = result.filter(p => p.personnelId === filters.personnelId);
+    }
+
+    // Sorting
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        const aVal = a[sortConfig.key as keyof PPE];
+        const bVal = b[sortConfig.key as keyof PPE];
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return sortConfig.direction === 'asc'
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [ppes, searchTerm, filters.status, filters.type, filters.personnelId, sortConfig, personnel]);
+
+  // Manual pagination
+  const totalItems = filteredPPEs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const displayedPPEs = filteredPPEs.slice(startIndex, endIndex);
 
   // Calculate statistics
-  const stats = useMemo(() => ({
-    total: ppes.length,
-    active: ppes.filter(p => p.status === 'Aktif').length,
-    returned: ppes.filter(p => p.status === 'İade Edildi').length,
-    lost: ppes.filter(p => p.status === 'Yıprandı/Kayıp').length,
-  }), [ppes]);
+  const stats = useMemo(() => {
+    const activePPEs = ppes.filter(p => p.status === 'Aktif');
+    const totalDays = activePPEs.reduce((sum, p) => {
+      const issueDate = new Date(p.issueDate);
+      const today = new Date();
+      const days = Math.floor((today.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
+      return sum + days;
+    }, 0);
+    const avgDays = activePPEs.length > 0 ? Math.round(totalDays / activePPEs.length) : 0;
+
+    return {
+      total: ppes.length,
+      active: ppes.filter(p => p.status === 'Aktif').length,
+      returned: ppes.filter(p => p.status === 'İade Edildi').length,
+      lost: ppes.filter(p => p.status === 'Yıprandı/Kayıp').length,
+      avgDays,
+    };
+  }, [ppes]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,10 +148,17 @@ export const PPEPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
-      deletePPE(id);
+    setPPEToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (ppeToDelete) {
+      deletePPE(ppeToDelete);
       toast.success('Kayıt silindi.');
+      setPPEToDelete(null);
     }
+    setDeleteModalOpen(false);
   };
 
   const openEditModal = (ppe: PPE) => {
@@ -100,7 +166,8 @@ export const PPEPage = () => {
     setIsModalOpen(true);
   };
 
-  const toggleSelectPPE = (id: string) => {
+  const toggleSelectPPE = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const newSelected = new Set(selectedPPEs);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -111,10 +178,10 @@ export const PPEPage = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedPPEs.size === filteredPPEs.length) {
+    if (selectedPPEs.size === displayedPPEs.length && displayedPPEs.length > 0) {
       setSelectedPPEs(new Set());
     } else {
-      setSelectedPPEs(new Set(filteredPPEs.map(p => p.id)));
+      setSelectedPPEs(new Set(displayedPPEs.map(p => p.id)));
     }
   };
 
@@ -123,11 +190,15 @@ export const PPEPage = () => {
       toast.error('Lütfen silmek için KKD seçiniz.');
       return;
     }
-    if (window.confirm(`${selectedPPEs.size} KKD kaydını silmek istediğinize emin misiniz?`)) {
-      selectedPPEs.forEach(id => deletePPE(id));
-      setSelectedPPEs(new Set());
-      toast.success(`${selectedPPEs.size} KKD kaydı başarıyla silindi.`);
-    }
+    setBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const count = selectedPPEs.size;
+    selectedPPEs.forEach(id => deletePPE(id));
+    setSelectedPPEs(new Set());
+    setBulkDeleteModalOpen(false);
+    toast.success(`${count} KKD kaydı başarıyla silindi.`);
   };
 
   const getDetailPPE = () => {
@@ -138,7 +209,7 @@ export const PPEPage = () => {
     const doc = new jsPDF();
     doc.text('KKD Zimmet Listesi', 14, 15);
     
-    const tableData = ppes.map(p => {
+    const tableData = filteredPPEs.map(p => {
       const person = personnel.find(per => per.id === p.personnelId);
       return [
         p.type,
@@ -160,7 +231,7 @@ export const PPEPage = () => {
   };
 
   const handleExportExcel = () => {
-    const data = ppes.map(p => {
+    const data = filteredPPEs.map(p => {
       const person = personnel.find(per => per.id === p.personnelId);
       return {
         'Tip': p.type,
@@ -188,6 +259,28 @@ export const PPEPage = () => {
     }
   };
 
+  const getStatusDotColor = (status: PPEStatus) => {
+    switch(status) {
+      case 'Aktif': return 'bg-emerald-500';
+      case 'İade Edildi': return 'bg-blue-500';
+      case 'Yıprandı/Kayıp': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getPPETypeIcon = (type: PPEType) => {
+    switch(type) {
+      case 'Baret': return HardHat;
+      case 'İş Ayakkabısı': return Package;
+      case 'Eldiven': return Shield;
+      case 'Gözlük': return Eye;
+      case 'Reflektörlü Yelek': return Shield;
+      case 'Kulaklık': return Shield;
+      case 'Emniyet Kemeri': return Shield;
+      default: return Package;
+    }
+  };
+
   const detailPPE = getDetailPPE();
   const detailPerson = detailPPE ? personnel.find(p => p.id === detailPPE.personnelId) : null;
 
@@ -196,7 +289,7 @@ export const PPEPage = () => {
       key: 'select',
       header: () => (
         <button onClick={toggleSelectAll} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-          {selectedPPEs.size === filteredPPEs.length && filteredPPEs.length > 0 ? (
+          {selectedPPEs.size === displayedPPEs.length && displayedPPEs.length > 0 ? (
             <CheckSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           ) : (
             <Square className="h-4 w-4 text-slate-400" />
@@ -224,12 +317,18 @@ export const PPEPage = () => {
       key: 'name',
       header: 'Ekipman',
       sortable: true,
-      render: (p: PPE) => (
-        <div>
-          <div className="font-medium text-slate-900 dark:text-white">{p.name}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">{p.type}</div>
-        </div>
-      ),
+      render: (p: PPE) => {
+        const Icon = getPPETypeIcon(p.type);
+        return (
+          <div className="flex items-start gap-2">
+            <Icon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mt-1 shrink-0" />
+            <div>
+              <div className="font-medium text-slate-900 dark:text-white">{p.name}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{p.type}</div>
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: 'personnelId',
@@ -238,7 +337,12 @@ export const PPEPage = () => {
       render: (p: PPE) => {
         const person = personnel.find(per => per.id === p.personnelId);
         return person ? (
-          <span className="text-slate-700 dark:text-slate-300">{person.firstName} {person.lastName}</span>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {person.firstName[0]}{person.lastName[0]}
+            </div>
+            <span className="text-slate-700 dark:text-slate-300">{person.firstName} {person.lastName}</span>
+          </div>
         ) : (
           <span className="text-red-500">Silinmiş Personel</span>
         );
@@ -248,22 +352,26 @@ export const PPEPage = () => {
       key: 'issueDate',
       header: 'Veriliş Tarihi',
       sortable: true,
-      width: '130px',
+      width: '140px',
       render: (p: PPE) => (
-        <span className="text-slate-700 dark:text-slate-300">
-          {new Date(p.issueDate).toLocaleDateString('tr-TR')}
-        </span>
+        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+          <span className="text-sm">{new Date(p.issueDate).toLocaleDateString('tr-TR')}</span>
+        </div>
       ),
     },
     {
       key: 'status',
       header: 'Durum',
       sortable: true,
-      width: '130px',
+      width: '140px',
       render: (p: PPE) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
-          {p.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${getStatusDotColor(p.status)}`} />
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
+            {p.status}
+          </span>
+        </div>
       ),
     },
     {
@@ -307,13 +415,13 @@ export const PPEPage = () => {
     },
   ];
 
-  const hasActiveFilters = searchTerm || filters.status || filters.type;
+  const hasActiveFilters = searchTerm || filters.status || filters.type || filters.personnelId;
 
   return (
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -350,12 +458,22 @@ export const PPEPage = () => {
           <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <X className="h-6 w-6" />
+                <AlertTriangle className="h-6 w-6" />
               </div>
               <TrendingUp className="h-5 w-5 opacity-70" />
             </div>
             <p className="text-2xl font-bold mb-1">{stats.lost}</p>
             <p className="text-sm text-white/80">Yıprandı/Kayıp</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Calendar className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold mb-1">{stats.avgDays}</p>
+            <p className="text-sm text-white/80">Ort. Kullanım (Gün)</p>
           </div>
         </div>
 
@@ -389,9 +507,9 @@ export const PPEPage = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder="Ekipman veya personel ara..." 
+                placeholder="Ekipman, personel veya not ara..." 
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 className="pl-10"
               />
             </div>
@@ -433,7 +551,7 @@ export const PPEPage = () => {
                 )}
               </Button>
               {hasActiveFilters && (
-                <Button variant="ghost" onClick={clearFilters} className="gap-2 text-slate-500">
+                <Button variant="ghost" onClick={() => { clearFilters(); setCurrentPage(1); }} className="gap-2 text-slate-500">
                   <X className="h-4 w-4" />
                   Temizle
                 </Button>
@@ -445,13 +563,13 @@ export const PPEPage = () => {
           {showFilters && (
             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Ekipman Tipi
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <HardHat className="h-3.5 w-3.5" /> Ekipman Tipi
                 </label>
                 <select
                   value={filters.type || 'all'}
-                  onChange={(e) => setFilter('type', e.target.value === 'all' ? '' : e.target.value)}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  onChange={(e) => { setFilter('type', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Tipler</option>
                   {ppeTypes.map(t => (
@@ -460,18 +578,33 @@ export const PPEPage = () => {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Durum
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" /> Durum
                 </label>
                 <select
                   value={filters.status || 'all'}
-                  onChange={(e) => setFilter('status', e.target.value === 'all' ? '' : e.target.value)}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  onChange={(e) => { setFilter('status', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Durumlar</option>
                   <option value="Aktif">Aktif</option>
                   <option value="İade Edildi">İade Edildi</option>
                   <option value="Yıprandı/Kayıp">Yıprandı/Kayıp</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5" /> Personel
+                </label>
+                <select
+                  value={filters.personnelId || 'all'}
+                  onChange={(e) => { setFilter('personnelId', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Personel</option>
+                  {personnel.map(p => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -481,11 +614,11 @@ export const PPEPage = () => {
         {/* Data View */}
         {viewMode === 'list' ? (
           <DataTable
-            data={filteredPPEs}
+            data={displayedPPEs}
             columns={columns}
             sortConfig={sortConfig}
             onSort={handleSort}
-            currentPage={currentPage}
+            currentPage={safeCurrentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             pageSize={pageSize}
@@ -503,35 +636,40 @@ export const PPEPage = () => {
           />
         ) : (
           <div className="space-y-4">
-            {filteredPPEs.length === 0 ? (
+            {displayedPPEs.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-16 text-center">
                 <HardHat className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                 <p className="text-slate-500 dark:text-slate-400 font-medium">KKD kaydı bulunamadı.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredPPEs.map((ppe) => {
+                {displayedPPEs.map((ppe) => {
                   const person = personnel.find(p => p.id === ppe.personnelId);
+                  const Icon = getPPETypeIcon(ppe.type);
                   return (
                     <div
                       key={ppe.id}
-                      className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer"
+                      className={`group bg-white dark:bg-slate-900 rounded-2xl border-2 p-5 hover:shadow-lg transition-all cursor-pointer ${
+                        selectedPPEs.has(ppe.id)
+                          ? 'border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-100 dark:ring-indigo-900/30'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+                      }`}
                       onClick={() => setDetailPPEId(ppe.id)}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shrink-0">
-                            <HardHat className="h-5 w-5" />
+                            <Icon className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-slate-900 dark:text-white">{ppe.name}</h3>
+                            <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1">{ppe.name}</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">{ppe.type}</p>
                           </div>
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleSelectPPE(ppe.id);
+                            toggleSelectPPE(ppe.id, e);
                           }}
                           className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                         >
@@ -542,6 +680,12 @@ export const PPEPage = () => {
                           )}
                         </button>
                       </div>
+
+                      {ppe.notes && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 mb-3 border border-slate-100 dark:border-slate-700/50">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{ppe.notes}</p>
+                        </div>
+                      )}
 
                       <div className="space-y-2 mb-3">
                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -555,7 +699,8 @@ export const PPEPage = () => {
                       </div>
 
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(ppe.status)}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(ppe.status)}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${getStatusDotColor(ppe.status)}`} />
                           {ppe.status}
                         </span>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -585,42 +730,63 @@ export const PPEPage = () => {
               </div>
             )}
 
-            {/* Pagination for Grid View */}
-            {totalPages > 1 && (
+            {/* Grid View Pagination */}
+            {filteredPPEs.length > 0 && (
               <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  {startIndex + 1}-{Math.min(endIndex, totalItems)} / {totalItems} kayıt
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                    className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    {[6, 9, 12, 24].map(size => (
+                      <option key={size} value={size}>{size} / sayfa</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    {startIndex + 1}-{Math.min(endIndex, totalItems)} / {totalItems}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+                    disabled={safeCurrentPage === 1}
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Önceki
-                  </Button>
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === page
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        if (totalPages <= 5) return true;
+                        if (page === 1 || page === totalPages) return true;
+                        return Math.abs(page - safeCurrentPage) <= 1;
+                      })
+                      .map((page, idx, arr) => (
+                        <React.Fragment key={page}>
+                          {idx > 0 && arr[idx - 1] !== page - 1 && (
+                            <span className="px-1 text-slate-400">...</span>
+                          )}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                              safeCurrentPage === page
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      ))}
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Sonraki
-                  </Button>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             )}
@@ -638,7 +804,7 @@ export const PPEPage = () => {
                 <label className="text-sm font-medium">Ekipman Tipi</label>
                 <select 
                   required
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                   value={currentPPE.type || ''}
                   onChange={e => setCurrentPPE({...currentPPE, type: e.target.value as PPEType})}
                 >
@@ -658,7 +824,7 @@ export const PPEPage = () => {
               <label className="text-sm font-medium">Zimmetlenecek Personel</label>
               <select 
                 required
-                className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 value={currentPPE.personnelId || ''}
                 onChange={e => setCurrentPPE({...currentPPE, personnelId: e.target.value})}
               >
@@ -678,7 +844,7 @@ export const PPEPage = () => {
                 <label className="text-sm font-medium">Durum</label>
                 <select 
                   required
-                  className="flex h-10 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                  className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                   value={currentPPE.status || 'Aktif'}
                   onChange={e => setCurrentPPE({...currentPPE, status: e.target.value as PPEStatus})}
                 >
@@ -692,7 +858,7 @@ export const PPEPage = () => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Notlar (Opsiyonel)</label>
               <textarea 
-                className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-50"
+                className="flex min-h-[80px] w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 value={currentPPE.notes || ''}
                 onChange={e => setCurrentPPE({...currentPPE, notes: e.target.value})}
               />
@@ -722,7 +888,8 @@ export const PPEPage = () => {
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{detailPPE.name}</h2>
                   <p className="text-slate-600 dark:text-slate-400 mb-2">{detailPPE.type}</p>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium ${getStatusColor(detailPPE.status)}`}>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium ${getStatusColor(detailPPE.status)}`}>
+                    <span className={`w-2 h-2 rounded-full ${getStatusDotColor(detailPPE.status)}`} />
                     {detailPPE.status}
                   </span>
                 </div>
@@ -798,6 +965,48 @@ export const PPEPage = () => {
               </div>
             </div>
           )}
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={deleteModalOpen}
+          onClose={() => { setDeleteModalOpen(false); setPPEToDelete(null); }}
+          title="KKD Kaydını Sil"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Bu KKD kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setDeleteModalOpen(false); setPPEToDelete(null); }}>İptal</Button>
+              <Button variant="danger" onClick={confirmDelete}>Sil</Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Bulk Delete Confirmation Modal */}
+        <Modal
+          isOpen={bulkDeleteModalOpen}
+          onClose={() => setBulkDeleteModalOpen(false)}
+          title="Toplu Silme"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Seçili <strong>{selectedPPEs.size}</strong> KKD kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setBulkDeleteModalOpen(false)}>İptal</Button>
+              <Button variant="danger" onClick={confirmBulkDelete}>
+                {selectedPPEs.size} Kaydı Sil
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     </PageTransition>

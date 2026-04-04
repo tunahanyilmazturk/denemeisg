@@ -8,9 +8,21 @@
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ─── APPEARANCE CSS CUSTOM PROPERTIES (defaults) ─── */
+:root {
+  --accent-h: 239;
+  --accent-s: 84%;
+  --accent-l: 67%;
+  --base-font-size: 14px;
+  --card-radius: 0.75rem;
+  --table-padding: 0.75rem;
+  --sidebar-width: 16rem;
+}
+
 body {
   @apply bg-slate-50 text-slate-900 antialiased transition-colors duration-300;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-size: var(--base-font-size);
 }
 
 .dark body {
@@ -19,6 +31,156 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   @apply font-display tracking-tight;
+}
+
+/* ─── ACCENT COLOR SYSTEM ─── */
+/* Primary accent backgrounds */
+.bg-indigo-600, .bg-indigo-500, .peer-checked\:bg-indigo-600:checked ~ div {
+  background-color: hsl(var(--accent-h), var(--accent-s), var(--accent-l)) !important;
+}
+.bg-indigo-50, .bg-indigo-50\/50 {
+  background-color: hsl(var(--accent-h), var(--accent-s), 96%) !important;
+}
+.bg-indigo-100 {
+  background-color: hsl(var(--accent-h), var(--accent-s), 92%) !important;
+}
+.dark .dark\:bg-indigo-500\/10, .dark .dark\:bg-indigo-500\/20 {
+  background-color: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.15) !important;
+}
+/* Gradient from-to */
+.from-indigo-500 {
+  --tw-gradient-from: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+}
+.to-indigo-600 {
+  --tw-gradient-to: hsl(var(--accent-h), var(--accent-s), calc(var(--accent-l) - 8%));
+}
+.from-indigo-600 {
+  --tw-gradient-from: hsl(var(--accent-h), var(--accent-s), calc(var(--accent-l) - 5%));
+}
+.to-indigo-700 {
+  --tw-gradient-to: hsl(var(--accent-h), var(--accent-s), calc(var(--accent-l) - 12%));
+}
+/* Text accent colors */
+.text-indigo-600, .text-indigo-700 {
+  color: hsl(var(--accent-h), var(--accent-s), calc(var(--accent-l) - 10%)) !important;
+}
+.text-indigo-500 {
+  color: hsl(var(--accent-h), var(--accent-s), var(--accent-l)) !important;
+}
+.dark .dark\:text-indigo-400 {
+  color: hsl(var(--accent-h), var(--accent-s), 72%) !important;
+}
+.dark .dark\:text-indigo-300 {
+  color: hsl(var(--accent-h), var(--accent-s), 80%) !important;
+}
+/* Border accent colors */
+.border-indigo-500 {
+  border-color: hsl(var(--accent-h), var(--accent-s), var(--accent-l)) !important;
+}
+.border-indigo-300 {
+  border-color: hsl(var(--accent-h), var(--accent-s), 78%) !important;
+}
+.dark .dark\:border-indigo-700 {
+  border-color: hsl(var(--accent-h), var(--accent-s), 40%) !important;
+}
+/* Ring accent colors */
+.ring-indigo-500, .focus\:ring-indigo-500:focus {
+  --tw-ring-color: hsl(var(--accent-h), var(--accent-s), var(--accent-l)) !important;
+}
+.ring-indigo-300, .peer-focus\:ring-indigo-300:focus {
+  --tw-ring-color: hsl(var(--accent-h), var(--accent-s), 78%) !important;
+}
+
+/* ─── CARD RADIUS ─── */
+/* Apply card radius to common card elements */
+.rounded-xl {
+  border-radius: var(--card-radius) !important;
+}
+.rounded-2xl {
+  border-radius: calc(var(--card-radius) + 0.25rem) !important;
+}
+.rounded-lg {
+  border-radius: calc(var(--card-radius) - 0.25rem) !important;
+}
+
+/* ─── TABLE DENSITY ─── */
+table tbody td {
+  padding-top: var(--table-padding) !important;
+  padding-bottom: var(--table-padding) !important;
+}
+table thead th {
+  padding-top: var(--table-padding) !important;
+  padding-bottom: var(--table-padding) !important;
+}
+
+/* ─── SIDEBAR WIDTH ─── */
+.sidebar-container {
+  width: var(--sidebar-width) !important;
+  min-width: var(--sidebar-width) !important;
+  transition: width 0.3s ease, min-width 0.3s ease;
+}
+
+/* Icons-only sidebar */
+.sidebar-icons-only .sidebar-label {
+  display: none !important;
+}
+.sidebar-icons-only .sidebar-container {
+  width: 4.5rem !important;
+  min-width: 4.5rem !important;
+}
+.sidebar-icons-only .sidebar-nav-item {
+  justify-content: center !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+/* Compact sidebar */
+.sidebar-compact .sidebar-container {
+  width: 12rem !important;
+  min-width: 12rem !important;
+}
+.sidebar-compact .sidebar-label {
+  font-size: 0.7rem !important;
+}
+
+/* ─── DISABLE ANIMATIONS ─── */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* ─── TRANSPARENT SIDEBAR ─── */
+.transparent-sidebar .sidebar-container {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+.dark.transparent-sidebar .sidebar-container {
+  background: rgba(15, 23, 42, 0.7) !important;
+}
+
+/* ─── COMPACT HEADER ─── */
+.compact-header .page-header h1 {
+  font-size: 1.25rem !important;
+}
+.compact-header .page-header p {
+  font-size: 0.75rem !important;
+}
+.compact-header .page-header {
+  margin-bottom: 0.5rem !important;
+}
+
+/* ─── HIDE STATS CARDS ─── */
+.hide-stats .stats-card-container {
+  display: none !important;
+}
+
+/* ─── HIDE BREADCRUMBS ─── */
+.hide-breadcrumbs .breadcrumb-container {
+  display: none !important;
 }
 
 /* Custom Scrollbar for a more premium feel */

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -8,8 +9,10 @@ import { Personnel, PersonnelClass, PersonnelStatus, BloodType, PersonnelRole } 
 import toast from 'react-hot-toast';
 import {
   Plus, ChevronRight, ChevronLeft, User, Phone, Mail, Calendar, Building2, Shield, Heart,
-  ClipboardList, Award, AlertCircle, Check, X, Info
+  ClipboardList, Award, AlertCircle, Check, X, Info, Lock, Eye, EyeOff, CheckCircle, XCircle
 } from 'lucide-react';
+import { validatePasswordStrength, getPasswordRules } from '../utils/passwordStrength';
+import { validateEmail } from '../utils/passwordStrength';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const PERSONNEL_ROLES: PersonnelRole[] = [
@@ -97,13 +100,14 @@ const Avatar = ({ person, size = 'md' }: { person: Partial<Personnel>; size?: 's
 };
 
 // ─── STEP ICONS ─────────────────────────────────────────────────────────────────
-const STEP_ICONS = [User, Phone, Building2, Heart, Award];
+const STEP_ICONS = [User, Phone, Building2, Heart, Award, Lock];
 const STEP_COLORS = [
   'from-indigo-500 to-purple-600',
   'from-blue-500 to-cyan-600',
   'from-emerald-500 to-teal-600',
   'from-rose-500 to-red-600',
   'from-amber-500 to-orange-600',
+  'from-violet-500 to-purple-600',
 ];
 
 const StepItem = ({ num, label, active, completed }: { num: number; label: string; active: boolean; completed: boolean }) => {
@@ -143,6 +147,7 @@ const StepItem = ({ num, label, active, completed }: { num: number; label: strin
 export const NewPersonnelWizard = () => {
   const navigate = useNavigate();
   const { companies, addPersonnel } = useStore();
+  const { createUser } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Personnel>>({
@@ -152,7 +157,17 @@ export const NewPersonnelWizard = () => {
   });
   const [newCert, setNewCert] = useState('');
 
-  const totalSteps = 5;
+  // Account creation state
+  const [accountData, setAccountData] = useState({
+    createAccount: true,
+    password: '',
+    confirmPassword: '',
+    systemRole: 'personel' as 'personel' | 'isg_uzmani' | 'isyeri_hekimi' | 'mudur' | 'viewer',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const totalSteps = 6;
 
   const steps = [
     { num: 1, label: 'Temel Bilgiler' },
@@ -160,6 +175,7 @@ export const NewPersonnelWizard = () => {
     { num: 3, label: 'Atanacak Firma' },
     { num: 4, label: 'Sağlık Bilgileri' },
     { num: 5, label: 'Sertifikalar' },
+    { num: 6, label: 'Sistem Hesabı' },
   ];
 
   const handleNext = () => {
@@ -208,7 +224,7 @@ export const NewPersonnelWizard = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Final validation
     if (!formData.firstName?.trim() || !formData.lastName?.trim()) {
       toast.error('Ad ve soyad zorunludur.');
@@ -229,6 +245,23 @@ export const NewPersonnelWizard = () => {
     if (!formData.startDate) {
       toast.error('İşe başlama tarihi zorunludur.');
       return;
+    }
+
+    // Account validation
+    if (accountData.createAccount) {
+      if (!accountData.password) {
+        toast.error('Şifre zorunludur.');
+        return;
+      }
+      if (accountData.password !== accountData.confirmPassword) {
+        toast.error('Şifreler eşleşmiyor.');
+        return;
+      }
+      const passwordCheck = validatePasswordStrength(accountData.password);
+      if (passwordCheck.score < 2) {
+        toast.error('Daha güçlü bir şifre belirleyin.');
+        return;
+      }
     }
 
     const newPersonnel: Personnel = {
@@ -254,8 +287,31 @@ export const NewPersonnelWizard = () => {
       medicalExams: formData.medicalExams,
     };
 
+    // Add personnel to the store
     addPersonnel(newPersonnel);
-    toast.success('Personel başarıyla eklendi!');
+
+    // Create system account if enabled
+    if (accountData.createAccount) {
+      try {
+        await createUser({
+          firstName: formData.firstName!,
+          lastName: formData.lastName!,
+          email: formData.email!,
+          password: accountData.password,
+          phone: formData.phone,
+          department: formData.assignedCompanyId
+            ? companies.find(c => c.id === formData.assignedCompanyId)?.name
+            : undefined,
+          role: accountData.systemRole,
+        });
+        toast.success('Personel ve kullanıcı hesabı başarıyla oluşturuldu!');
+      } catch (error) {
+        toast.success('Personel eklendi ancak hesap oluşturulurken hata oluştu.');
+      }
+    } else {
+      toast.success('Personel başarıyla eklendi!');
+    }
+
     navigate('/personnel');
   };
 
@@ -783,6 +839,236 @@ export const NewPersonnelWizard = () => {
                 </div>
               )}
             </div>
+          </div>
+        );
+
+      // STEP 6: Sistem Hesabı
+      case 6:
+        const passwordStrength = accountData.password ? validatePasswordStrength(accountData.password) : null;
+        const passwordRules = getPasswordRules();
+        const passwordsMatch = accountData.password && accountData.confirmPassword && accountData.password === accountData.confirmPassword;
+        
+        return (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                  <Lock className="h-4.5 w-4.5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Sistem Hesabı</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Personele giriş yapabilmesi için kullanıcı hesabı oluşturun</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Toggle Account Creation */}
+            <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+              <label className="flex items-center gap-4 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={accountData.createAccount}
+                    onChange={(e) => setAccountData(prev => ({ ...prev, createAccount: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-12 h-7 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:bg-indigo-500 transition-colors" />
+                  <div className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md peer-checked:translate-x-5 transition-transform" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Kullanıcı Hesabı Oluştur</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Personel bu bilgilerle sisteme giriş yapabilecek
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {accountData.createAccount && (
+              <>
+                {/* Login Email Info */}
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800">
+                  <div className="flex items-start gap-3">
+                    <Mail className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-indigo-900 dark:text-indigo-100 mb-1">Giriş E-postası</p>
+                      <p className="text-sm text-indigo-700 dark:text-indigo-300 font-mono bg-indigo-100 dark:bg-indigo-800/30 px-3 py-1.5 rounded-lg inline-block">
+                        {formData.email || 'E-posta adresi henüz girilmedi'}
+                      </p>
+                      <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2">
+                        Personelin 2. adımda girdiğiniz e-posta adresi giriş bilgileri olarak kullanılacaktır.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* System Role */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5" />
+                    Sistem Rolü
+                  </h3>
+                  <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                    <select
+                      className={selectClass}
+                      value={accountData.systemRole}
+                      onChange={(e) => setAccountData(prev => ({ ...prev, systemRole: e.target.value as typeof accountData.systemRole }))}
+                    >
+                      <option value="personel">Personel - Sınırlı erişim</option>
+                      <option value="isg_uzmani">İSG Uzmanı - Eğitim ve risk yönetimi</option>
+                      <option value="isyeri_hekimi">İşyeri Hekimi - Sağlık kayıtları</option>
+                      <option value="mudur">Müdür - Genel görüntüleme</option>
+                      <option value="viewer">Gözlemci - Sadece görüntüleme</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                    <Lock className="h-3.5 w-3.5" />
+                    Şifre Belirleme
+                  </h3>
+                  <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-4">
+                    {/* Password Input */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Şifre <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          className={`${inputClass} pl-10 pr-10`}
+                          placeholder="••••••••"
+                          value={accountData.password}
+                          onChange={(e) => setAccountData(prev => ({ ...prev, password: e.target.value }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Password Strength Bar */}
+                    {passwordStrength && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                passwordStrength.score <= 1 ? 'bg-red-500' :
+                                passwordStrength.score === 2 ? 'bg-amber-500' :
+                                passwordStrength.score === 3 ? 'bg-blue-500' : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${(passwordStrength.score / 4) * 100}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-semibold ${
+                            passwordStrength.score <= 1 ? 'text-red-500' :
+                            passwordStrength.score === 2 ? 'text-amber-500' :
+                            passwordStrength.score === 3 ? 'text-blue-500' : 'text-emerald-500'
+                          }`}>
+                            {passwordStrength.label}
+                          </span>
+                        </div>
+
+                        {/* Password Rules */}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {passwordRules.map((rule, idx) => {
+                            const met = rule.test(accountData.password);
+                            return (
+                              <div key={idx} className="flex items-center gap-1.5">
+                                {met ? (
+                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <XCircle className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 flex-shrink-0" />
+                                )}
+                                <span className={`text-xs ${met ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500'}`}>
+                                  {rule.rule}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Confirm Password */}
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Şifre Tekrar <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          className={`${inputClass} pl-10 pr-10`}
+                          placeholder="••••••••"
+                          value={accountData.confirmPassword}
+                          onChange={(e) => setAccountData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {accountData.confirmPassword && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {passwordsMatch ? (
+                            <>
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400">Şifreler eşleşiyor</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-3.5 w-3.5 text-red-500" />
+                              <span className="text-xs text-red-600 dark:text-red-400">Şifreler eşleşmiyor</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Info */}
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-emerald-800 dark:text-emerald-200">
+                      <p className="font-semibold mb-1">Hesap Bilgileri Özeti</p>
+                      <p className="text-emerald-700 dark:text-emerald-300">
+                        Personel, <strong>{formData.email}</strong> adresi ve belirlediğiniz şifre ile sisteme giriş yapabilecek.
+                        İlk girişte şifresini değiştirmesi önerilir.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {!accountData.createAccount && (
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-amber-800 dark:text-amber-200">
+                    <p className="font-semibold mb-1">Hesap Oluşturulmayacak</p>
+                    <p className="text-amber-700 dark:text-amber-300">
+                      Personel sisteme giriş yapamayacak. Daha sonra Kullanıcı Yönetimi panelinden hesap oluşturabilirsiniz.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
 

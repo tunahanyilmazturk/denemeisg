@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Save, Bell, Shield, Building, User, Moon, Sun, Monitor, Globe, Mail, Key, Upload, Settings as SettingsIcon } from 'lucide-react';
+import { Save, Bell, Shield, Building, User, Moon, Sun, Monitor, Globe, Mail, Key, Upload, Settings as SettingsIcon, Paintbrush } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useStore, Theme, Language } from '../store/useStore';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdvancedDefinitionsTab } from '../components/settings/AdvancedDefinitionsTab';
+import { AppearanceSettingsTab } from '../components/settings/AppearanceSettingsTab';
 
-type SettingsTab = 'general' | 'notifications' | 'security' | 'profile' | 'advanced';
+type SettingsTab = 'general' | 'appearance' | 'notifications' | 'security' | 'profile' | 'advanced';
 
 const tabs = [
   { id: 'general' as SettingsTab, label: 'Genel Ayarlar', icon: Building },
+  { id: 'appearance' as SettingsTab, label: 'Görünüm', icon: Paintbrush },
   { id: 'notifications' as SettingsTab, label: 'Bildirimler', icon: Bell },
   { id: 'security' as SettingsTab, label: 'Güvenlik', icon: Shield },
   { id: 'profile' as SettingsTab, label: 'Profil', icon: User },
@@ -265,6 +267,19 @@ export const Settings = () => {
                         </Button>
                       </div>
                     </form>
+                  </motion.div>
+                )}
+
+                {/* Appearance Tab */}
+                {activeTab === 'appearance' && (
+                  <motion.div
+                    key="appearance"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AppearanceSettingsTab />
                   </motion.div>
                 )}
 

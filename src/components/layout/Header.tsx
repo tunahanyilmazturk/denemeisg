@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Moon, Sun, Bell, User, AlertTriangle, CheckCircle, Search, Menu,
   Shield, TrendingUp, Activity, LogOut, Settings as SettingsIcon,
-  Command, Clock, Zap, Award
+  Command, Clock, Zap, Award, Key
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { Link, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../store/useAuthStore';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../ui/Button';
+import { ROLE_LABELS } from '../../types/auth';
 
 export const Header = () => {
   const { isDarkMode, toggleDarkMode, incidents, trainings, risks, personnel } = useStore();
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -300,12 +304,20 @@ export const Header = () => {
                   {/* User Info Header */}
                   <div className="p-4 bg-gradient-to-r from-indigo-500 to-purple-500">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center text-white">
-                        <User className="h-6 w-6" />
+                      <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center text-white font-semibold text-lg">
+                        {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-semibold text-white">Admin Kullanıcı</p>
-                        <p className="text-xs text-white/70">admin@isg-system.com</p>
+                        <p className="font-semibold text-white">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-xs text-white/70">{user?.email}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 px-2 py-1.5 bg-white/10 rounded-lg backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <Key className="h-3.5 w-3.5 text-white/80" />
+                        <span className="text-xs text-white/90 font-medium">
+                          {user && ROLE_LABELS[user.role]}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -360,8 +372,8 @@ export const Header = () => {
                     <button
                       onClick={() => {
                         setShowUserMenu(false);
-                        // Add logout logic here
-                        console.log('Logout clicked');
+                        logout();
+                        navigate('/login');
                       }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group"
                     >

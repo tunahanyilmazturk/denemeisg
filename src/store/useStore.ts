@@ -33,6 +33,25 @@ export interface SystemSettings {
   dateFormat: string;
 }
 
+export type FontSize = 'small' | 'medium' | 'large';
+export type CardStyle = 'rounded' | 'sharp' | 'pill';
+export type ColorAccent = 'indigo' | 'blue' | 'emerald' | 'rose' | 'amber' | 'violet' | 'cyan' | 'orange';
+export type SidebarStyle = 'full' | 'compact' | 'icons';
+export type TableDensity = 'comfortable' | 'compact' | 'spacious';
+
+export interface AppearanceSettings {
+  fontSize: FontSize;
+  cardStyle: CardStyle;
+  colorAccent: ColorAccent;
+  sidebarStyle: SidebarStyle;
+  tableDensity: TableDensity;
+  animationsEnabled: boolean;
+  showBreadcrumbs: boolean;
+  transparentSidebar: boolean;
+  compactHeader: boolean;
+  showStatsCards: boolean;
+}
+
 interface AppState {
   companies: Company[];
   personnel: Personnel[];
@@ -45,9 +64,11 @@ interface AppState {
   // Settings
   systemSettings: SystemSettings;
   notificationSettings: NotificationSettings;
+  appearanceSettings: AppearanceSettings;
   userProfile: UserProfile;
   updateSystemSettings: (settings: Partial<SystemSettings>) => void;
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  updateAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   // Sidebar
   sidebarCollapsed: boolean;
@@ -96,6 +117,7 @@ interface AppState {
   updateLocationDefinition: (location: LocationDefinition) => void;
   deleteLocationDefinition: (id: string) => void;
   getLocationsByCompany: (companyId: string) => LocationDefinition[];
+  getLocationsBySector: (sectorId: string) => LocationDefinition[];
   getGlobalLocations: () => LocationDefinition[];
   // IncidentReasonDefinition CRUD
   addIncidentReasonDefinition: (reason: IncidentReasonDefinition) => void;
@@ -236,6 +258,18 @@ export const useStore = create<AppState>()(
         riskUpdates: true,
         dailySummary: false,
       },
+      appearanceSettings: {
+        fontSize: 'medium',
+        cardStyle: 'rounded',
+        colorAccent: 'indigo',
+        sidebarStyle: 'full',
+        tableDensity: 'comfortable',
+        animationsEnabled: true,
+        showBreadcrumbs: true,
+        transparentSidebar: false,
+        compactHeader: false,
+        showStatsCards: true,
+      },
       userProfile: {
         name: 'Yönetici',
         email: 'admin@hantech.com',
@@ -264,6 +298,9 @@ export const useStore = create<AppState>()(
       }),
       updateNotificationSettings: (settings) => set((state) => ({
         notificationSettings: { ...state.notificationSettings, ...settings },
+      })),
+      updateAppearanceSettings: (settings) => set((state) => ({
+        appearanceSettings: { ...state.appearanceSettings, ...settings },
       })),
       updateUserProfile: (profile) => set((state) => ({
         userProfile: { ...state.userProfile, ...profile },
@@ -347,7 +384,8 @@ export const useStore = create<AppState>()(
         locationDefinitions: state.locationDefinitions.filter((l) => l.id !== id),
       })),
       getLocationsByCompany: (companyId) => get().locationDefinitions.filter((l) => l.companyId === companyId),
-      getGlobalLocations: () => get().locationDefinitions.filter((l) => !l.companyId),
+      getLocationsBySector: (sectorId) => get().locationDefinitions.filter((l) => l.sectorId === sectorId),
+      getGlobalLocations: () => get().locationDefinitions.filter((l) => !l.companyId && !l.sectorId),
       // IncidentReasonDefinition CRUD
       addIncidentReasonDefinition: (reason) => set((state) => ({ incidentReasonDefinitions: [...state.incidentReasonDefinitions, reason] })),
       updateIncidentReasonDefinition: (reason) => set((state) => ({
@@ -360,7 +398,7 @@ export const useStore = create<AppState>()(
       getAllReasons: () => get().incidentReasonDefinitions,
     }),
     {
-      name: 'hantech-storage-v4',
+      name: 'hantech-storage-v7',
       partialize: (state) => ({
         companies: state.companies,
         personnel: state.personnel,
@@ -371,6 +409,7 @@ export const useStore = create<AppState>()(
         isDarkMode: state.isDarkMode,
         systemSettings: state.systemSettings,
         notificationSettings: state.notificationSettings,
+        appearanceSettings: state.appearanceSettings,
         userProfile: state.userProfile,
         sidebarCollapsed: state.sidebarCollapsed,
         sectors: state.sectors,

@@ -104,7 +104,6 @@ export const AdvancedDefinitionsTab = () => {
     equipmentDefinitions, addEquipmentDefinition, updateEquipmentDefinition, deleteEquipmentDefinition,
     locationDefinitions, addLocationDefinition, updateLocationDefinition, deleteLocationDefinition,
     incidentReasonDefinitions, addIncidentReasonDefinition, updateIncidentReasonDefinition, deleteIncidentReasonDefinition,
-    companies,
   } = useStore();
 
   const [activeSection, setActiveSection] = useState<ActiveSection>('sectors');
@@ -130,8 +129,8 @@ export const AdvancedDefinitionsTab = () => {
   // ── Location State ──
   const [locModal, setLocModal] = useState(false);
   const [editingLoc, setEditingLoc] = useState<LocationDefinition | null>(null);
-  const [locForm, setLocForm] = useState({ companyId: '', name: '', type: 'Site' as LocationDefinition['type'], riskLevel: 'Orta' as Severity });
-  const [locFilter, setLocFilter] = useState<'all' | 'global' | string>('all');
+  const [locForm, setLocForm] = useState({ sectorId: '', name: '', type: 'Site' as LocationDefinition['type'], riskLevel: 'Orta' as Severity });
+  const [locSectorFilter, setLocSectorFilter] = useState('');
 
   // ── Reason State ──
   const [reasonModal, setReasonModal] = useState(false);
@@ -220,21 +219,21 @@ export const AdvancedDefinitionsTab = () => {
   // ───────────── LOCATION HANDLERS ─────────────
   const openAddLoc = () => {
     setEditingLoc(null);
-    setLocForm({ companyId: '', name: '', type: 'Site', riskLevel: 'Orta' });
+    setLocForm({ sectorId: '', name: '', type: 'Site', riskLevel: 'Orta' });
     setLocModal(true);
   };
   const openEditLoc = (l: LocationDefinition) => {
     setEditingLoc(l);
-    setLocForm({ companyId: l.companyId || '', name: l.name, type: l.type || 'Site', riskLevel: l.riskLevel || 'Orta' });
+    setLocForm({ sectorId: l.sectorId || '', name: l.name, type: l.type || 'Site', riskLevel: l.riskLevel || 'Orta' });
     setLocModal(true);
   };
   const saveLoc = () => {
     if (!locForm.name.trim()) { toast.error('Lokasyon adı zorunludur.'); return; }
     if (editingLoc) {
-      updateLocationDefinition({ ...editingLoc, companyId: locForm.companyId || undefined, name: locForm.name, type: locForm.type, riskLevel: locForm.riskLevel });
+      updateLocationDefinition({ ...editingLoc, sectorId: locForm.sectorId || undefined, name: locForm.name, type: locForm.type, riskLevel: locForm.riskLevel });
       toast.success('Lokasyon güncellendi.');
     } else {
-      addLocationDefinition({ id: genId('loc'), companyId: locForm.companyId || undefined, name: locForm.name, type: locForm.type, riskLevel: locForm.riskLevel, createdAt: new Date().toISOString() });
+      addLocationDefinition({ id: genId('loc'), sectorId: locForm.sectorId || undefined, name: locForm.name, type: locForm.type, riskLevel: locForm.riskLevel, createdAt: new Date().toISOString() });
       toast.success('Lokasyon eklendi.');
     }
     setLocModal(false);
@@ -275,8 +274,8 @@ export const AdvancedDefinitionsTab = () => {
   });
 
   const filteredLocations = locationDefinitions.filter(l => {
-    if (locFilter === 'global') return !l.companyId;
-    if (locFilter !== 'all' && locFilter !== 'global') return l.companyId === locFilter;
+    if (locSectorFilter === '_global') return !l.sectorId;
+    if (locSectorFilter) return l.sectorId === locSectorFilter;
     return true;
   });
 
@@ -493,10 +492,10 @@ export const AdvancedDefinitionsTab = () => {
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
             <select className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-50"
-              value={locFilter} onChange={e => setLocFilter(e.target.value)}>
-              <option value="all">Tümü</option>
-              <option value="global">Global (Firma bağımsız)</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              value={locSectorFilter} onChange={e => setLocSectorFilter(e.target.value)}>
+              <option value="">Tüm Sektörler</option>
+              <option value="_global">Global (Sektörsüz)</option>
+              {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             <Button type="button" onClick={openAddLoc} className="gap-2 text-sm h-8 px-3">
               <Plus className="h-3.5 w-3.5" /> Ekle
@@ -507,7 +506,7 @@ export const AdvancedDefinitionsTab = () => {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
                   <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Lokasyon Adı</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Firma</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Sektör</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Tip</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Risk</th>
                   <th className="text-right px-4 py-3 font-medium text-slate-600 dark:text-slate-400">İşlemler</th>
@@ -518,7 +517,7 @@ export const AdvancedDefinitionsTab = () => {
                   <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{l.name}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs">
-                      {l.companyId ? companies.find(c => c.id === l.companyId)?.name : <span className="text-indigo-500">Global</span>}
+                      {l.sectorId ? sectors.find(s => s.id === l.sectorId)?.name : <span className="text-indigo-500">Global</span>}
                     </td>
                     <td className="px-4 py-3">
                       {l.type && (
@@ -712,10 +711,10 @@ export const AdvancedDefinitionsTab = () => {
         <Modal title={editingLoc ? 'Lokasyonu Düzenle' : 'Yeni Lokasyon Ekle'} onClose={() => setLocModal(false)} onSave={saveLoc}>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Firma (Boş bırakırsanız global olur)</label>
-              <select className={selectClass} value={locForm.companyId} onChange={e => setLocForm(p => ({ ...p, companyId: e.target.value }))}>
-                <option value="">Global (Tüm firmalar)</option>
-                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Sektör (Boş bırakırsanız global olur)</label>
+              <select className={selectClass} value={locForm.sectorId} onChange={e => setLocForm(p => ({ ...p, sectorId: e.target.value }))}>
+                <option value="">Global (Tüm sektörler)</option>
+                {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">

@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { 
-  LayoutDashboard, Building2, Users, AlertTriangle, Settings, GraduationCap, HardHat, 
+import {
+  LayoutDashboard, Building2, Users, AlertTriangle, Settings, GraduationCap, HardHat,
   ShieldAlert, ChevronLeft, ChevronRight, FileText, LogOut, Bell, ChevronDown,
   BarChart3
 } from 'lucide-react';
 import { cn } from '../ui/Button';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { ROLE_LABELS } from '../../types/auth';
 
 interface NavItem {
   icon: React.ElementType;
@@ -22,35 +24,55 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
-  {
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    ]
-  },
-  {
-    title: 'Yönetim',
-    items: [
-      { icon: Building2, label: 'Firmalar', path: '/companies' },
-      { icon: Users, label: 'Personeller', path: '/personnel' },
-    ]
-  },
-  {
-    title: 'İSG Operasyonları',
-    items: [
-      { icon: AlertTriangle, label: 'Kaza/Olay', path: '/incidents' },
-      { icon: GraduationCap, label: 'Eğitimler', path: '/trainings' },
-      { icon: ShieldAlert, label: 'Risk Değerlendirme', path: '/risks' },
-      { icon: HardHat, label: 'KKD Takibi', path: '/ppe' },
-    ]
-  },
-  {
-    title: 'Raporlar',
-    items: [
-      { icon: BarChart3, label: 'Analizler', path: '/reports' },
-    ]
+const getNavSections = (userRole?: string): NavSection[] => {
+  const isAdmin = userRole === 'admin' || userRole === 'superadmin';
+  
+  const sections: NavSection[] = [
+    {
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      ]
+    },
+  ];
+
+  // Admin-only Personnel management
+  if (isAdmin) {
+    sections.push({
+      title: 'Yönetim',
+      items: [
+        { icon: Building2, label: 'Firmalar', path: '/companies' },
+        { icon: Users, label: 'Personeller', path: '/personnel' },
+      ]
+    });
+  } else {
+    sections.push({
+      title: 'Yönetim',
+      items: [
+        { icon: Building2, label: 'Firmalar', path: '/companies' },
+      ]
+    });
   }
-];
+
+  sections.push(
+    {
+      title: 'İSG Operasyonları',
+      items: [
+        { icon: AlertTriangle, label: 'Kaza/Olay', path: '/incidents' },
+        { icon: GraduationCap, label: 'Eğitimler', path: '/trainings' },
+        { icon: ShieldAlert, label: 'Risk Değerlendirme', path: '/risks' },
+        { icon: HardHat, label: 'KKD Takibi', path: '/ppe' },
+      ]
+    },
+    {
+      title: 'Raporlar',
+      items: [
+        { icon: BarChart3, label: 'Analizler', path: '/reports' },
+      ]
+    }
+  );
+
+  return sections;
+};
 
 interface TooltipProps {
   children: React.ReactNode;
@@ -106,7 +128,12 @@ const Tooltip: React.FC<TooltipProps> = ({ children, content, show }) => {
 
 export const Sidebar = () => {
   const location = useLocation();
-  const { sidebarCollapsed, toggleSidebar, userProfile, incidents, trainings } = useStore();
+  const navigate = useNavigate();
+  const { sidebarCollapsed, toggleSidebar, incidents, trainings } = useStore();
+  const { user, logout } = useAuthStore();
+  
+  // Dynamic navigation based on role
+  const navSections = getNavSections(user?.role);
   
   // Calculate badges
   const pendingIncidents = incidents.filter(i => i.status === 'İnceleniyor').length;
@@ -233,7 +260,7 @@ export const Sidebar = () => {
         "relative border-t border-slate-200 dark:border-slate-800 transition-all duration-300",
         sidebarCollapsed ? "p-3" : "p-4"
       )}>
-        <Tooltip content={`${userProfile.name} - ${userProfile.role}`} show={sidebarCollapsed}>
+        <Tooltip content={`${user?.firstName} ${user?.lastName} - ${user ? ROLE_LABELS[user.role] : ''}`} show={sidebarCollapsed}>
           <div className={cn(
             "flex items-center gap-3 rounded-xl bg-slate-100 dark:bg-slate-800 p-2",
             sidebarCollapsed ? "justify-center" : ""
@@ -241,7 +268,7 @@ export const Sidebar = () => {
             {/* Avatar */}
             <div className="relative flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg shadow-indigo-500/25">
-                {userProfile.name.charAt(0).toUpperCase()}
+                {user?.firstName?.charAt(0).toUpperCase()}{user?.lastName?.charAt(0).toUpperCase()}
               </div>
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full" />
             </div>
@@ -254,21 +281,25 @@ export const Sidebar = () => {
                 className="flex-1 min-w-0"
               >
                 <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                  {userProfile.name}
+                  {user?.firstName} {user?.lastName}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {userProfile.role}
+                  {user && ROLE_LABELS[user.role]}
                 </p>
               </motion.div>
             )}
             
             {!sidebarCollapsed && (
-              <NavLink
-                to="/settings"
-                className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              <button
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                title="Çıkış Yap"
               >
-                <Settings className="h-4 w-4" />
-              </NavLink>
+                <LogOut className="h-4 w-4" />
+              </button>
             )}
           </div>
         </Tooltip>

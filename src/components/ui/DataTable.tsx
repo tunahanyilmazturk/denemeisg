@@ -25,6 +25,7 @@ interface DataTableProps<T> {
   endIndex?: number;
   emptyMessage?: string;
   keyExtractor: (item: T) => string;
+  onRowClick?: (item: T) => void;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -42,6 +43,7 @@ export function DataTable<T extends Record<string, any>>({
   endIndex = 0,
   emptyMessage = 'Kayıt bulunamadı.',
   keyExtractor,
+  onRowClick,
 }: DataTableProps<T>) {
   const getSortIcon = (columnKey: keyof T | string) => {
     if (!sortConfig || sortConfig.key !== columnKey) {
@@ -90,9 +92,10 @@ export function DataTable<T extends Record<string, any>>({
                 </tr>
               ) : (
                 data.map((item, index) => (
-                  <tr 
-                    key={keyExtractor(item)} 
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  <tr
+                    key={keyExtractor(item)}
+                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                    onClick={() => onRowClick?.(item)}
                   >
                     {columns.map((column) => (
                       <td key={`${keyExtractor(item)}-${String(column.key)}`} className="px-6 py-4">

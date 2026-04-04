@@ -226,6 +226,7 @@ export interface EquipmentDefinition {
 
 export interface LocationDefinition {
   id: string;
+  sectorId?: string;
   companyId?: string;
   name: string;
   type?: 'Office' | 'Warehouse' | 'Site' | 'Other';

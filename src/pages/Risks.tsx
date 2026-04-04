@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { Risk, RiskStatus } from '../types';
-import { Plus, Search, Edit2, Trash2, Download, FileText, ShieldAlert, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, User, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Download, FileText, ShieldAlert, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, User, AlertTriangle, ChevronLeft, ChevronRight, BarChart3, Shield } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -23,9 +23,11 @@ export const RisksPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRisks, setSelectedRisks] = useState<Set<string>>(new Set());
   const [detailRiskId, setDetailRiskId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [riskToDelete, setRiskToDelete] = useState<string | null>(null);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
 
   const {
-    paginatedData,
     sortConfig,
     handleSort,
     searchTerm,
@@ -37,40 +39,99 @@ export const RisksPage = () => {
     setCurrentPage,
     pageSize,
     setPageSize,
-    totalPages,
-    totalItems,
-    startIndex,
-    endIndex,
   } = useDataTable<Risk>({
     data: risks,
     initialSort: { key: 'score', direction: 'desc' },
     initialPageSize: 10,
   });
 
-  // Apply custom filters
-  const filteredRisks = paginatedData.filter((r) => {
-    const matchesSearch = 
-      r.hazard.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      r.risk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.responsible.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = !filters.status || filters.status === 'all' || r.status === filters.status;
-    const matchesScoreRange = !filters.scoreRange || filters.scoreRange === 'all' || 
-      (filters.scoreRange === 'low' && r.score <= 6) ||
-      (filters.scoreRange === 'medium' && r.score > 6 && r.score <= 12) ||
-      (filters.scoreRange === 'high' && r.score > 12);
-    
-    return matchesSearch && matchesStatus && matchesScoreRange;
-  });
+  // Unique responsibles for filter
+  const uniqueResponsibles = useMemo(() => {
+    const set = new Set<string>();
+    risks.forEach(r => { if (r.responsible) set.add(r.responsible); });
+    return Array.from(set).sort();
+  }, [risks]);
+
+  // Manual filtering on raw data to avoid double-filter bug
+  const filteredRisks = useMemo(() => {
+    let result = [...risks];
+
+    // Search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((r) =>
+        r.hazard.toLowerCase().includes(term) ||
+        r.risk.toLowerCase().includes(term) ||
+        r.responsible.toLowerCase().includes(term) ||
+        r.controlMeasure.toLowerCase().includes(term)
+      );
+    }
+
+    // Status filter
+    if (filters.status && filters.status !== 'all') {
+      result = result.filter(r => r.status === filters.status);
+    }
+
+    // Score range filter
+    if (filters.scoreRange && filters.scoreRange !== 'all') {
+      result = result.filter(r => {
+        if (filters.scoreRange === 'low') return r.score <= 6;
+        if (filters.scoreRange === 'medium') return r.score > 6 && r.score <= 12;
+        if (filters.scoreRange === 'high') return r.score > 12;
+        return true;
+      });
+    }
+
+    // Responsible filter
+    if (filters.responsible && filters.responsible !== 'all') {
+      result = result.filter(r => r.responsible === filters.responsible);
+    }
+
+    // Sorting
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        const aVal = a[sortConfig.key as keyof Risk];
+        const bVal = b[sortConfig.key as keyof Risk];
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return sortConfig.direction === 'asc'
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [risks, searchTerm, filters.status, filters.scoreRange, filters.responsible, sortConfig]);
+
+  // Manual pagination
+  const totalItems = filteredRisks.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const displayedRisks = filteredRisks.slice(startIndex, endIndex);
 
   // Calculate statistics
-  const stats = useMemo(() => ({
-    total: risks.length,
-    open: risks.filter(r => r.status === 'Açık').length,
-    inProgress: risks.filter(r => r.status === 'Devam Ediyor').length,
-    resolved: risks.filter(r => r.status === 'Giderildi').length,
-    highRisk: risks.filter(r => r.score > 12).length,
-  }), [risks]);
+  const stats = useMemo(() => {
+    const avgScore = risks.length > 0
+      ? (risks.reduce((sum, r) => sum + r.score, 0) / risks.length).toFixed(1)
+      : '0';
+    return {
+      total: risks.length,
+      open: risks.filter(r => r.status === 'Açık').length,
+      inProgress: risks.filter(r => r.status === 'Devam Ediyor').length,
+      resolved: risks.filter(r => r.status === 'Giderildi').length,
+      highRisk: risks.filter(r => r.score > 12).length,
+      avgScore,
+    };
+  }, [risks]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,10 +152,17 @@ export const RisksPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
-      deleteRisk(id);
+    setRiskToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (riskToDelete) {
+      deleteRisk(riskToDelete);
       toast.success('Kayıt silindi.');
+      setRiskToDelete(null);
     }
+    setDeleteModalOpen(false);
   };
 
   const openEditModal = (risk: Risk) => {
@@ -102,7 +170,8 @@ export const RisksPage = () => {
     setIsModalOpen(true);
   };
 
-  const toggleSelectRisk = (id: string) => {
+  const toggleSelectRisk = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const newSelected = new Set(selectedRisks);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -113,10 +182,10 @@ export const RisksPage = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedRisks.size === filteredRisks.length) {
+    if (selectedRisks.size === displayedRisks.length && displayedRisks.length > 0) {
       setSelectedRisks(new Set());
     } else {
-      setSelectedRisks(new Set(filteredRisks.map(r => r.id)));
+      setSelectedRisks(new Set(displayedRisks.map(r => r.id)));
     }
   };
 
@@ -125,11 +194,15 @@ export const RisksPage = () => {
       toast.error('Lütfen silmek için risk seçiniz.');
       return;
     }
-    if (window.confirm(`${selectedRisks.size} risk kaydını silmek istediğinize emin misiniz?`)) {
-      selectedRisks.forEach(id => deleteRisk(id));
-      setSelectedRisks(new Set());
-      toast.success(`${selectedRisks.size} risk kaydı başarıyla silindi.`);
-    }
+    setBulkDeleteModalOpen(true);
+  };
+
+  const confirmBulkDelete = () => {
+    const count = selectedRisks.size;
+    selectedRisks.forEach(id => deleteRisk(id));
+    setSelectedRisks(new Set());
+    setBulkDeleteModalOpen(false);
+    toast.success(`${count} risk kaydı başarıyla silindi.`);
   };
 
   const getDetailRisk = () => {
@@ -148,6 +221,24 @@ export const RisksPage = () => {
     return 'Yüksek';
   };
 
+  const getScoreDotColor = (score: number) => {
+    if (score <= 6) return 'bg-emerald-500';
+    if (score <= 12) return 'bg-amber-500';
+    return 'bg-red-500';
+  };
+
+  const getStatusDotColor = (status: RiskStatus) => {
+    switch (status) {
+      case 'Giderildi': return 'bg-emerald-500';
+      case 'Devam Ediyor': return 'bg-blue-500';
+      default: return 'bg-red-500';
+    }
+  };
+
+  const getScoreBarWidth = (score: number) => {
+    return `${Math.min((score / 25) * 100, 100)}%`;
+  };
+
   const detailRisk = getDetailRisk();
 
   const columns = [
@@ -155,7 +246,7 @@ export const RisksPage = () => {
       key: 'select',
       header: () => (
         <button onClick={toggleSelectAll} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
-          {selectedRisks.size === filteredRisks.length && filteredRisks.length > 0 ? (
+          {selectedRisks.size === displayedRisks.length && displayedRisks.length > 0 ? (
             <CheckSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           ) : (
             <Square className="h-4 w-4 text-slate-400" />
@@ -185,8 +276,11 @@ export const RisksPage = () => {
       sortable: true,
       render: (r: Risk) => (
         <div>
-          <div className="font-medium text-slate-900 dark:text-white">{r.hazard}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400">{r.risk}</div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${getScoreDotColor(r.score)}`} />
+            <span className="font-medium text-slate-900 dark:text-white">{r.hazard}</span>
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 ml-4 mt-0.5">{r.risk}</div>
         </div>
       ),
     },
@@ -194,13 +288,23 @@ export const RisksPage = () => {
       key: 'score',
       header: 'Skor',
       sortable: true,
-      width: '100px',
+      width: '130px',
       render: (r: Risk) => (
-        <div className="text-center">
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${getScoreColor(r.score)}`}>
-            {r.score}
-          </span>
-          <div className="text-[10px] text-slate-400 mt-1">{r.probability} × {r.severity}</div>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold border ${getScoreColor(r.score)}`}>
+              {r.score}
+            </span>
+            <span className="text-[10px] text-slate-400">{r.probability} × {r.severity}</span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+            <div
+              className={`h-1.5 rounded-full transition-all ${
+                r.score > 12 ? 'bg-red-500' : r.score > 6 ? 'bg-amber-500' : 'bg-emerald-500'
+              }`}
+              style={{ width: getScoreBarWidth(r.score) }}
+            />
+          </div>
         </div>
       ),
     },
@@ -229,24 +333,32 @@ export const RisksPage = () => {
       header: 'Sorumlu',
       sortable: true,
       render: (r: Risk) => (
-        <span className="text-slate-900 dark:text-white font-medium">{r.responsible}</span>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {r.responsible.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+          </div>
+          <span className="text-slate-900 dark:text-white font-medium">{r.responsible}</span>
+        </div>
       ),
     },
     {
       key: 'status',
       header: 'Durum',
       sortable: true,
-      width: '120px',
+      width: '130px',
       render: (r: Risk) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-          r.status === 'Giderildi' 
-            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-          r.status === 'Devam Ediyor' 
-            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-        }`}>
-          {r.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${getStatusDotColor(r.status)}`} />
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+            r.status === 'Giderildi' 
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+            r.status === 'Devam Ediyor' 
+              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+          }`}>
+            {r.status}
+          </span>
+        </div>
       ),
     },
     {
@@ -254,7 +366,12 @@ export const RisksPage = () => {
       header: 'Tarih',
       sortable: true,
       width: '110px',
-      render: (r: Risk) => new Date(r.date).toLocaleDateString('tr-TR'),
+      render: (r: Risk) => (
+        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+          <span className="text-sm">{new Date(r.date).toLocaleDateString('tr-TR')}</span>
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -297,7 +414,7 @@ export const RisksPage = () => {
     },
   ];
 
-  const hasActiveFilters = searchTerm || filters.status || filters.scoreRange;
+  const hasActiveFilters = searchTerm || filters.status || filters.scoreRange || filters.responsible;
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
@@ -308,12 +425,14 @@ export const RisksPage = () => {
       r.hazard,
       r.risk,
       `${r.probability} x ${r.severity} = ${r.score}`,
+      getScoreLabel(r.score),
       r.controlMeasure,
+      r.responsible,
       r.status
     ]);
 
     (doc as any).autoTable({
-      head: [['Tarih', 'Tehlike', 'Risk', 'Skor (O x Ş)', 'Kontrol Tedbiri', 'Durum']],
+      head: [['Tarih', 'Tehlike', 'Risk', 'Skor (O x Ş)', 'Seviye', 'Kontrol Tedbiri', 'Sorumlu', 'Durum']],
       body: tableData,
       startY: 20,
     });
@@ -330,6 +449,7 @@ export const RisksPage = () => {
       'Olasılık': r.probability,
       'Şiddet': r.severity,
       'Skor': r.score,
+      'Risk Seviyesi': getScoreLabel(r.score),
       'Kontrol Tedbiri': r.controlMeasure,
       'Sorumlu': r.responsible,
       'Durum': r.status
@@ -346,7 +466,7 @@ export const RisksPage = () => {
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -400,6 +520,16 @@ export const RisksPage = () => {
             <p className="text-2xl font-bold mb-1">{stats.highRisk}</p>
             <p className="text-sm text-white/80">Yüksek Riskli</p>
           </div>
+
+          <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold mb-1">{stats.avgScore}</p>
+            <p className="text-sm text-white/80">Ort. Skor</p>
+          </div>
         </div>
 
         {/* Header */}
@@ -436,9 +566,9 @@ export const RisksPage = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder="Tehlike, risk veya sorumlu ara..." 
+                placeholder="Tehlike, risk, tedbir veya sorumlu ara..." 
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 className="pl-10"
               />
             </div>
@@ -480,7 +610,7 @@ export const RisksPage = () => {
                 )}
               </Button>
               {hasActiveFilters && (
-                <Button variant="ghost" onClick={clearFilters} className="gap-2 text-slate-500">
+                <Button variant="ghost" onClick={() => { clearFilters(); setCurrentPage(1); }} className="gap-2 text-slate-500">
                   <X className="h-4 w-4" />
                   Temizle
                 </Button>
@@ -492,13 +622,13 @@ export const RisksPage = () => {
           {showFilters && (
             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Durum
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" /> Durum
                 </label>
                 <select
                   value={filters.status || 'all'}
-                  onChange={(e) => setFilter('status', e.target.value === 'all' ? '' : e.target.value)}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  onChange={(e) => { setFilter('status', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Durumlar</option>
                   <option value="Açık">Açık</option>
@@ -507,18 +637,33 @@ export const RisksPage = () => {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Risk Seviyesi
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5" /> Risk Seviyesi
                 </label>
                 <select
                   value={filters.scoreRange || 'all'}
-                  onChange={(e) => setFilter('scoreRange', e.target.value === 'all' ? '' : e.target.value)}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  onChange={(e) => { setFilter('scoreRange', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="all">Tüm Seviyeler</option>
                   <option value="low">Düşük (1-6)</option>
                   <option value="medium">Orta (7-12)</option>
                   <option value="high">Yüksek (13-25)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5" /> Sorumlu
+                </label>
+                <select
+                  value={filters.responsible || 'all'}
+                  onChange={(e) => { setFilter('responsible', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Sorumlular</option>
+                  {uniqueResponsibles.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -528,11 +673,11 @@ export const RisksPage = () => {
         {/* Data View */}
         {viewMode === 'list' ? (
           <DataTable
-            data={filteredRisks}
+            data={displayedRisks}
             columns={columns}
             sortConfig={sortConfig}
             onSort={handleSort}
-            currentPage={currentPage}
+            currentPage={safeCurrentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             pageSize={pageSize}
@@ -550,17 +695,25 @@ export const RisksPage = () => {
           />
         ) : (
           <div className="space-y-4">
-            {filteredRisks.length === 0 ? (
+            {displayedRisks.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-16 text-center">
                 <ShieldAlert className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                 <p className="text-slate-500 dark:text-slate-400 font-medium">Risk kaydı bulunamadı.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredRisks.map((risk) => (
+                {displayedRisks.map((risk) => (
                   <div
                     key={risk.id}
-                    className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer"
+                    className={`group bg-white dark:bg-slate-900 rounded-2xl border-2 p-5 hover:shadow-lg transition-all cursor-pointer ${
+                      selectedRisks.has(risk.id)
+                        ? 'border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-100 dark:ring-indigo-900/30'
+                        : risk.score > 12
+                          ? 'border-red-200 dark:border-red-800/50 hover:border-red-300 dark:hover:border-red-700'
+                          : risk.score > 6
+                            ? 'border-amber-200 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+                    }`}
                     onClick={() => setDetailRiskId(risk.id)}
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -580,7 +733,7 @@ export const RisksPage = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleSelectRisk(risk.id);
+                          toggleSelectRisk(risk.id, e);
                         }}
                         className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                       >
@@ -590,6 +743,31 @@ export const RisksPage = () => {
                           <Square className="h-5 w-5 text-slate-400" />
                         )}
                       </button>
+                    </div>
+
+                    {/* Score bar */}
+                    <div className="mb-3">
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            risk.score > 12 ? 'bg-red-500' : risk.score > 6 ? 'bg-amber-500' : 'bg-emerald-500'
+                          }`}
+                          style={{ width: getScoreBarWidth(risk.score) }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-[10px] text-slate-400">O:{risk.probability} × Ş:{risk.severity}</span>
+                        <span className={`text-[10px] font-semibold ${
+                          risk.score > 12 ? 'text-red-600 dark:text-red-400' : 
+                          risk.score > 6 ? 'text-amber-600 dark:text-amber-400' : 
+                          'text-emerald-600 dark:text-emerald-400'
+                        }`}>{getScoreLabel(risk.score)}</span>
+                      </div>
+                    </div>
+
+                    {/* Control Measure Preview */}
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 mb-3 border border-slate-100 dark:border-slate-700/50">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{risk.controlMeasure}</p>
                     </div>
 
                     <div className="space-y-2 mb-3">
@@ -608,13 +786,14 @@ export const RisksPage = () => {
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${getScoreColor(risk.score)}`}>
                           {getScoreLabel(risk.score)}
                         </span>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                           risk.status === 'Giderildi'
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                           risk.status === 'Devam Ediyor'
                             ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                           'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${getStatusDotColor(risk.status)}`} />
                           {risk.status}
                         </span>
                       </div>
@@ -644,42 +823,63 @@ export const RisksPage = () => {
               </div>
             )}
 
-            {/* Pagination for Grid View */}
-            {totalPages > 1 && (
+            {/* Grid View Pagination */}
+            {filteredRisks.length > 0 && (
               <div className="flex items-center justify-between bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  {startIndex + 1}-{Math.min(endIndex, totalItems)} / {totalItems} kayıt
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                    className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    {[6, 9, 12, 24].map(size => (
+                      <option key={size} value={size}>{size} / sayfa</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    {startIndex + 1}-{Math.min(endIndex, totalItems)} / {totalItems}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+                    disabled={safeCurrentPage === 1}
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Önceki
-                  </Button>
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === page
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        if (totalPages <= 5) return true;
+                        if (page === 1 || page === totalPages) return true;
+                        return Math.abs(page - safeCurrentPage) <= 1;
+                      })
+                      .map((page, idx, arr) => (
+                        <React.Fragment key={page}>
+                          {idx > 0 && arr[idx - 1] !== page - 1 && (
+                            <span className="px-1 text-slate-400">...</span>
+                          )}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                              safeCurrentPage === page
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      ))}
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Sonraki
-                  </Button>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             )}
@@ -708,7 +908,7 @@ export const RisksPage = () => {
               <Input required value={currentRisk.risk || ''} onChange={e => setCurrentRisk({...currentRisk, risk: e.target.value})} placeholder="Örn: Düşme, yaralanma" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Olasılık (1-5)</label>
                 <select 
@@ -730,6 +930,14 @@ export const RisksPage = () => {
                 >
                   {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Hesaplanan Skor</label>
+                <div className={`flex h-10 items-center justify-center rounded-md border font-bold text-lg ${
+                  getScoreColor((currentRisk.probability || 1) * (currentRisk.severity || 1))
+                }`}>
+                  {(currentRisk.probability || 1) * (currentRisk.severity || 1)}
+                </div>
               </div>
             </div>
 
@@ -795,13 +1003,14 @@ export const RisksPage = () => {
                     <span className={`inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold border ${getScoreColor(detailRisk.score)}`}>
                       {getScoreLabel(detailRisk.score)} Risk
                     </span>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
                       detailRisk.status === 'Giderildi'
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                       detailRisk.status === 'Devam Ediyor'
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                     }`}>
+                      <span className={`w-2 h-2 rounded-full ${getStatusDotColor(detailRisk.status)}`} />
                       {detailRisk.status}
                     </span>
                   </div>
@@ -837,6 +1046,24 @@ export const RisksPage = () => {
                     detailRisk.score > 6 ? 'text-amber-700 dark:text-amber-400' :
                     'text-emerald-700 dark:text-emerald-400'
                   }`}>{detailRisk.score}</p>
+                </div>
+              </div>
+
+              {/* Score bar visual */}
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs text-slate-500">Risk Skor Barı</span>
+                  <span className="text-xs text-slate-500">{detailRisk.score} / 25</span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full transition-all ${
+                      detailRisk.score > 12 ? 'bg-gradient-to-r from-red-400 to-red-600' :
+                      detailRisk.score > 6 ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
+                      'bg-gradient-to-r from-emerald-400 to-emerald-600'
+                    }`}
+                    style={{ width: getScoreBarWidth(detailRisk.score) }}
+                  />
                 </div>
               </div>
 
@@ -882,6 +1109,48 @@ export const RisksPage = () => {
               </div>
             </div>
           )}
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={deleteModalOpen}
+          onClose={() => { setDeleteModalOpen(false); setRiskToDelete(null); }}
+          title="Risk Kaydını Sil"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Bu risk kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setDeleteModalOpen(false); setRiskToDelete(null); }}>İptal</Button>
+              <Button variant="danger" onClick={confirmDelete}>Sil</Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Bulk Delete Confirmation Modal */}
+        <Modal
+          isOpen={bulkDeleteModalOpen}
+          onClose={() => setBulkDeleteModalOpen(false)}
+          title="Toplu Silme"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Seçili <strong>{selectedRisks.size}</strong> risk kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setBulkDeleteModalOpen(false)}>İptal</Button>
+              <Button variant="danger" onClick={confirmBulkDelete}>
+                {selectedRisks.size} Kaydı Sil
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     </PageTransition>
