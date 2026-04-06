@@ -18,12 +18,16 @@ import { NewPersonnelWizard } from './pages/NewPersonnelWizard';
 import { NewCompanyWizard } from './pages/NewCompanyWizard';
 import { Incidents } from './pages/Incidents';
 import { NewIncidentWizard } from './pages/NewIncidentWizard';
+import { IncidentDetail } from './pages/IncidentDetail';
 import { Trainings } from './pages/Trainings';
 import { NewTrainingWizard } from './pages/NewTrainingWizard';
+import { Certificates } from './pages/Certificates';
+import { NewCertificateWizard } from './pages/NewCertificateWizard';
 import { PPEPage } from './pages/PPE';
 import { RisksPage } from './pages/Risks';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { ProfilePage } from './pages/Profile';
 import { LoginPage } from './pages/Login';
 import { ForgotPasswordPage } from './pages/ForgotPassword';
 import { useStore } from './store/useStore';
@@ -89,6 +93,11 @@ const AnimatedRoutes = () => {
               <NewIncidentWizard />
             </ProtectedRoute>
           } />
+          <Route path="incidents/:id" element={
+            <ProtectedRoute requiredPermission={{ resource: 'incidents', action: 'read' }}>
+              <IncidentDetail />
+            </ProtectedRoute>
+          } />
           <Route path="trainings" element={
             <ProtectedRoute requiredPermission={{ resource: 'trainings', action: 'read' }}>
               <Trainings />
@@ -97,6 +106,16 @@ const AnimatedRoutes = () => {
           <Route path="trainings/new" element={
             <ProtectedRoute requiredPermission={{ resource: 'trainings', action: 'create' }}>
               <NewTrainingWizard />
+            </ProtectedRoute>
+          } />
+          <Route path="certificates" element={
+            <ProtectedRoute requiredPermission={{ resource: 'trainings', action: 'read' }}>
+              <Certificates />
+            </ProtectedRoute>
+          } />
+          <Route path="certificates/new" element={
+            <ProtectedRoute requiredPermission={{ resource: 'trainings', action: 'create' }}>
+              <NewCertificateWizard />
             </ProtectedRoute>
           } />
           <Route path="ppe" element={
@@ -117,6 +136,11 @@ const AnimatedRoutes = () => {
           <Route path="settings" element={
             <ProtectedRoute requiredPermission={{ resource: 'settings', action: 'read' }}>
               <Settings />
+            </ProtectedRoute>
+          } />
+          <Route path="profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           } />
         </Route>

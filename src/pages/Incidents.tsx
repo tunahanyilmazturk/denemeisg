@@ -5,9 +5,10 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
+import { ImageGallery } from '../components/ui/ImageGallery';
 import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Building2, User, Calendar, MapPin, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Building2, User, Calendar, MapPin, ClipboardList, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { Incident, Severity, IncidentStatus, IncidentType } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -23,7 +24,7 @@ export const Incidents = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentIncident, setCurrentIncident] = useState<Partial<Incident>>({});
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 1024 ? 'grid' : 'list');
   const [selectedIncidents, setSelectedIncidents] = useState<Set<string>>(new Set());
   const [detailIncidentId, setDetailIncidentId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -359,15 +360,15 @@ export const Incidents = () => {
       render: (i: Incident) => (
         <div className="flex items-center justify-end gap-2">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDetailIncidentId(i.id);
-            }}
-            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors"
-            title="Detayları Gör"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
+           onClick={(e) => {
+             e.stopPropagation();
+             navigate(`/incidents/${i.id}`);
+           }}
+           className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors"
+           title="Detayları Gör"
+         >
+           <Eye className="h-4 w-4" />
+         </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -399,59 +400,60 @@ export const Incidents = () => {
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <AlertCircle className="h-6 w-6" />
+        <div className="hidden lg:grid lg:grid-cols-5 gap-4">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.total}</p>
-            <p className="text-sm text-white/80">Toplam Olay</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.total}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Olay</p>
           </div>
 
-          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <AlertCircle className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.open}</p>
-            <p className="text-sm text-white/80">Açık</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.open}</p>
+            <p className="text-xs sm:text-sm text-white/80">Açık</p>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Search className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Search className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.investigating}</p>
-            <p className="text-sm text-white/80">İnceleniyor</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.investigating}</p>
+            <p className="text-xs sm:text-sm text-white/80">İnceleniyor</p>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <CheckSquare className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <CheckSquare className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.closed}</p>
-            <p className="text-sm text-white/80">Kapalı</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.closed}</p>
+            <p className="text-xs sm:text-sm text-white/80">Kapalı</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <AlertCircle className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.critical}</p>
-            <p className="text-sm text-white/80">Kritik/Yüksek</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.critical}</p>
+            <p className="text-xs sm:text-sm text-white/80">Kritik/Yüksek</p>
           </div>
         </div>
 
@@ -651,7 +653,7 @@ export const Incidents = () => {
                             ? 'border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/20'
                             : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'
                         }`}
-                        onClick={() => setDetailIncidentId(incident.id)}
+                        onClick={() => navigate(`/incidents/${incident.id}`)}
                       >
                         {/* Selection & Severity */}
                         <div className="flex items-start justify-between mb-3">
@@ -1053,6 +1055,19 @@ export const Incidents = () => {
                 <p className="text-slate-700 dark:text-slate-300 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
                   {detailIncident.rootCause}
                 </p>
+              </div>
+            )}
+
+            {/* Photos */}
+            {detailIncident.photos && detailIncident.photos.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Olay Fotoğrafları ({detailIncident.photos.length})
+                </h3>
+                <div className="bg-white dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                  <ImageGallery photos={detailIncident.photos} columns={3} maxDisplay={6} />
+                </div>
               </div>
             )}
 

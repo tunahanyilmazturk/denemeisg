@@ -31,7 +31,7 @@ export const Companies = () => {
   const { companies, deleteCompany, personnel, incidents, sectors } = useStore();
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 1024 ? 'card' : 'table');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
@@ -380,49 +380,49 @@ export const Companies = () => {
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Building2 className="h-6 w-6" />
+        <div className="hidden lg:grid lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Building2 className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.totalCompanies}</p>
-            <p className="text-sm text-white/80">Toplam Firma</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.totalCompanies}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Firma</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Users className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Users className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.totalPersonnel}</p>
-            <p className="text-sm text-white/80">Atanmış Personel</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.totalPersonnel}</p>
+            <p className="text-xs sm:text-sm text-white/80">Atanmış Personel</p>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <MapPin className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <MapPin className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.totalLocations}</p>
-            <p className="text-sm text-white/80">Toplam Lokasyon</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.totalLocations}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Lokasyon</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <AlertCircle className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.totalIncidents}</p>
-            <p className="text-sm text-white/80">Toplam Olay</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.totalIncidents}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Olay</p>
           </div>
         </div>
 

@@ -20,7 +20,7 @@ export const RisksPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentRisk, setCurrentRisk] = useState<Partial<Risk>>({ probability: 1, severity: 1 });
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 1024 ? 'grid' : 'list');
   const [selectedRisks, setSelectedRisks] = useState<Set<string>>(new Set());
   const [detailRiskId, setDetailRiskId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -466,69 +466,69 @@ export const RisksPage = () => {
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <ShieldAlert className="h-6 w-6" />
+        <div className="hidden lg:grid lg:grid-cols-6 gap-4">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <ShieldAlert className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.total}</p>
-            <p className="text-sm text-white/80">Toplam Risk</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.total}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Risk</p>
           </div>
 
-          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.open}</p>
-            <p className="text-sm text-white/80">Açık</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.open}</p>
+            <p className="text-xs sm:text-sm text-white/80">Açık</p>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <ShieldAlert className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <ShieldAlert className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.inProgress}</p>
-            <p className="text-sm text-white/80">Devam Ediyor</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.inProgress}</p>
+            <p className="text-xs sm:text-sm text-white/80">Devam Ediyor</p>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <CheckSquare className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <CheckSquare className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.resolved}</p>
-            <p className="text-sm text-white/80">Giderildi</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.resolved}</p>
+            <p className="text-xs sm:text-sm text-white/80">Giderildi</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.highRisk}</p>
-            <p className="text-sm text-white/80">Yüksek Riskli</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.highRisk}</p>
+            <p className="text-xs sm:text-sm text-white/80">Yüksek Riskli</p>
           </div>
 
-          <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <BarChart3 className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <BarChart3 className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.avgScore}</p>
-            <p className="text-sm text-white/80">Ort. Skor</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.avgScore}</p>
+            <p className="text-xs sm:text-sm text-white/80">Ort. Skor</p>
           </div>
         </div>
 

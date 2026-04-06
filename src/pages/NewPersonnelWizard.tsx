@@ -15,48 +15,57 @@ import { validatePasswordStrength, getPasswordRules } from '../utils/passwordStr
 import { validateEmail } from '../utils/passwordStrength';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const PERSONNEL_ROLES: PersonnelRole[] = [
-  // İSG Profesyonelleri
-  'İşyeri Hekimi',
-  'İş Güvenliği Uzmanı',
-  'İşyeri Hemşiresi',
-  'Sağlık Teknikeri',
-  'İşyeri Hekimi Yardımcısı',
-  'İş Güvenliği Teknikeri',
-  'İşyeri Hekimi Asistanı',
-  // Yönetim
-  'Müdür',
-  'Genel Müdür',
-  'Şantiye Şefi',
-  'Bölge Müdürü',
-  'İşletme Müdürü',
-  'Fabrika Müdürü',
-  // Teknik
-  'Mühendis',
-  'Tekniker',
-  'Teknisyen',
-  'Mimar',
-  // Üretim/İşçi
-  'Usta',
-  'Kalfa',
-  'İşçi',
-  'Operatör',
-  'Üretim Personeli',
-  // Destek
-  'Sekreter',
-  'Yönetici Asistanı',
-  'Muhasebeci',
-  'İnsan Kaynakları',
-  'Satış Temsilcisi',
-  'Sürücü',
-  'Güvenlik Görevlisi',
-  'Temizlik Personeli',
-  // Diğer
-  'Stajyer',
-  'Geçici İşçi',
-  'Taşeron Personeli',
-  'Diğer',
-];
+// Grouped roles for better UX
+const ROLE_GROUPS = {
+  'İSG Profesyonelleri': [
+    'İşyeri Hekimi',
+    'İş Güvenliği Uzmanı',
+    'İşyeri Hemşiresi',
+    'Sağlık Teknikeri',
+    'İşyeri Hekimi Yardımcısı',
+    'İş Güvenliği Teknikeri',
+    'İşyeri Hekimi Asistanı',
+  ],
+  'Yönetim': [
+    'Müdür',
+    'Genel Müdür',
+    'Şantiye Şefi',
+    'Bölge Müdürü',
+    'İşletme Müdürü',
+    'Fabrika Müdürü',
+  ],
+  'Teknik': [
+    'Mühendis',
+    'Tekniker',
+    'Teknisyen',
+    'Mimar',
+  ],
+  'Üretim / İşçi': [
+    'Usta',
+    'Kalfa',
+    'İşçi',
+    'Operatör',
+    'Üretim Personeli',
+  ],
+  'Destek': [
+    'Sekreter',
+    'Yönetici Asistanı',
+    'Muhasebeci',
+    'İnsan Kaynakları',
+    'Satış Temsilcisi',
+    'Sürücü',
+    'Güvenlik Görevlisi',
+    'Temizlik Personeli',
+  ],
+  'Diğer': [
+    'Stajyer',
+    'Geçici İşçi',
+    'Taşeron Personeli',
+    'Diğer',
+  ],
+} as const;
+
+const PERSONNEL_ROLES: PersonnelRole[] = Object.values(ROLE_GROUPS).flat() as PersonnelRole[];
 
 const CLASSES: PersonnelClass[] = ['A', 'B', 'C'];
 const STATUSES: PersonnelStatus[] = ['Aktif', 'Pasif', 'İstifa Etti'];
@@ -146,7 +155,7 @@ const StepItem = ({ num, label, active, completed }: { num: number; label: strin
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export const NewPersonnelWizard = () => {
   const navigate = useNavigate();
-  const { companies, addPersonnel } = useStore();
+  const { companies, addPersonnel, updateCompany } = useStore();
   const { createUser } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -289,6 +298,23 @@ export const NewPersonnelWizard = () => {
 
     // Add personnel to the store
     addPersonnel(newPersonnel);
+
+    // Auto-assign ISG roles to company
+    if (formData.assignedCompanyId && formData.role) {
+      const assignedCompany = companies.find(c => c.id === formData.assignedCompanyId);
+      if (assignedCompany) {
+        const isISGSpecialist = formData.role === 'İş Güvenliği Uzmanı' || formData.role === 'İş Güvenliği Teknikeri';
+        const isDoctor = formData.role === 'İşyeri Hekimi' || formData.role === 'İşyeri Hekimi Yardımcısı' || formData.role === 'İşyeri Hekimi Asistanı';
+
+        if (isISGSpecialist && !assignedCompany.isgSpecialistId) {
+          updateCompany({ ...assignedCompany, isgSpecialistId: newPersonnel.id });
+          toast.success(`${formData.firstName} ${formData.lastName}, ${assignedCompany.name} firmasına İSG Uzmanı olarak atandı.`);
+        } else if (isDoctor && !assignedCompany.workplaceDoctorId) {
+          updateCompany({ ...assignedCompany, workplaceDoctorId: newPersonnel.id });
+          toast.success(`${formData.firstName} ${formData.lastName}, ${assignedCompany.name} firmasına İşyeri Hekimi olarak atandı.`);
+        }
+      }
+    }
 
     // Create system account if enabled
     if (accountData.createAccount) {
@@ -433,8 +459,12 @@ export const NewPersonnelWizard = () => {
                       onChange={e => setFormData(p => ({ ...p, role: e.target.value }))}
                     >
                       <option value="">Görev Seçiniz</option>
-                      {PERSONNEL_ROLES.map(role => (
-                        <option key={role} value={role}>{role}</option>
+                      {Object.entries(ROLE_GROUPS).map(([group, roles]) => (
+                        <optgroup key={group} label={group}>
+                          {roles.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -669,12 +699,59 @@ export const NewPersonnelWizard = () => {
               )}
             </div>
 
+            {/* ISG Role Auto-Assignment Info */}
+            {formData.assignedCompanyId && formData.role && (
+              formData.role === 'İş Güvenliği Uzmanı' || formData.role === 'İş Güvenliği Teknikeri' ||
+              formData.role === 'İşyeri Hekimi' || formData.role === 'İşyeri Hekimi Yardımcısı' || formData.role === 'İşyeri Hekimi Asistanı'
+            ) && (() => {
+              const selectedCompany = companies.find(c => c.id === formData.assignedCompanyId);
+              const isISGSpecialist = formData.role === 'İş Güvenliği Uzmanı' || formData.role === 'İş Güvenliği Teknikeri';
+              const isDoctor = formData.role === 'İşyeri Hekimi' || formData.role === 'İşyeri Hekimi Yardımcısı' || formData.role === 'İşyeri Hekimi Asistanı';
+              const hasExistingISG = selectedCompany?.isgSpecialistId;
+              const hasExistingDoctor = selectedCompany?.workplaceDoctorId;
+
+              if ((isISGSpecialist && hasExistingISG) || (isDoctor && hasExistingDoctor)) {
+                return (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-amber-800 dark:text-amber-200">
+                        <p className="font-semibold mb-1">Uyarı</p>
+                        <p className="text-amber-700 dark:text-amber-300">
+                          Bu firmada zaten {isISGSpecialist ? 'bir İSG Uzmanı' : 'bir İşyeri Hekimi'} atanmış durumda.
+                          Yeni personel firmaya atanacak ancak otomatik {isISGSpecialist ? 'İSG Uzmanı' : 'İşyeri Hekimi'} olarak belirlenmeyecektir.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-emerald-800 dark:text-emerald-200">
+                      <p className="font-semibold mb-1">Otomatik Atama</p>
+                      <p className="text-emerald-700 dark:text-emerald-300">
+                        Bu personel, {selectedCompany?.name} firmasına {isISGSpecialist ? 'İSG Uzmanı' : 'İşyeri Hekimi'} olarak otomatik atanacaktır.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-blue-800 dark:text-blue-200">
                   <p className="font-semibold mb-1">Bilgi</p>
-                  <p className="text-blue-700 dark:text-blue-300">Firma atamasını daha sonra da yapabilirsiniz. Personel listesinden düzenleme yaparak atama gerçekleştirebilirsiniz.</p>
+                  <p className="text-blue-700 dark:text-blue-300">
+                    Firma atamasını daha sonra da yapabilirsiniz. Personel listesinden düzenleme yaparak atama gerçekleştirebilirsiniz.
+                    {formData.role && (formData.role === 'İş Güvenliği Uzmanı' || formData.role === 'İş Güvenliği Teknikeri' || formData.role === 'İşyeri Hekimi' || formData.role === 'İşyeri Hekimi Yardımcısı' || formData.role === 'İşyeri Hekimi Asistanı') &&
+                      ' İSG görevlileri için firma seçtiğinizde, otomatik olarak firmanın İSG sorumlusu olarak atanabilirsiniz.'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1216,7 +1293,7 @@ export const NewPersonnelWizard = () => {
           </div>
 
           {/* Fixed Navigation Buttons */}
-          <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 lg:px-6 py-3">
+          <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 lg:px-6 py-3 wizard-nav-buttons">
             <div className="max-w-4xl mx-auto w-full flex justify-between items-center gap-3">
               <Button
                 variant="ghost"

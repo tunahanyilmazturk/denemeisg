@@ -63,7 +63,7 @@ export const PersonnelPage = () => {
 
   const [showFilters, setShowFilters] = useState(false);
   const [selectedPersonnel, setSelectedPersonnel] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 1024 ? 'card' : 'table');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<string | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
@@ -413,49 +413,49 @@ export const PersonnelPage = () => {
       <div className="space-y-5">
 
         {/* ─── STAT CARDS ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Users className="h-6 w-6" />
+        <div className="hidden lg:grid lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Users className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.total}</p>
-            <p className="text-sm text-white/80">Toplam Personel</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.total}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Personel</p>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <UserCheck className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <UserCheck className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.active}</p>
-            <p className="text-sm text-white/80">Aktif</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.active}</p>
+            <p className="text-xs sm:text-sm text-white/80">Aktif</p>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Clock className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Clock className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.passive}</p>
-            <p className="text-sm text-white/80">Pasif</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.passive}</p>
+            <p className="text-xs sm:text-sm text-white/80">Pasif</p>
           </div>
 
-          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <UserX className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <UserX className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.resigned}</p>
-            <p className="text-sm text-white/80">İstifa Etti</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.resigned}</p>
+            <p className="text-xs sm:text-sm text-white/80">İstifa Etti</p>
           </div>
         </div>
 

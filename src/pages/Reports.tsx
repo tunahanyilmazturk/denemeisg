@@ -7,14 +7,18 @@ import {
   AlertTriangle, GraduationCap, HardHat, ShieldAlert, Calendar,
   Download, FileText, ChevronDown, ArrowUpRight, ArrowDownRight,
   Activity, CheckCircle2, Clock, XCircle, Target, Zap, Package, UserCheck,
-  AlertCircle, Award, Eye, Grid3x3, Percent, Timer
+  AlertCircle, Award, Eye, Grid3x3, Percent, Timer, CalendarDays, Filter, Table2
 } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { Button } from '../components/ui/Button';
-import { exportToPDF, exportToExcel } from '../utils/exportUtils';
+import {
+  exportToPDF, exportToExcel,
+  exportOverviewReport, exportIncidentsReport, exportTrainingsReport,
+  exportPPEReport, exportRiskReport, exportPersonnelReport
+} from '../utils/exportUtils';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6'];
@@ -27,6 +31,9 @@ export const Reports = () => {
   const [dateRange, setDateRange] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const isDark = isDarkMode;
   const chartTextColor = isDark ? '#9ca3af' : '#4b5563';
@@ -34,11 +41,32 @@ export const Reports = () => {
   // Date range filtering helper
   const isInDateRange = (dateStr: string) => {
     if (dateRange === 'all') return true;
+    if (dateRange === 'custom') {
+      const date = new Date(dateStr);
+      if (customStartDate && date < new Date(customStartDate)) return false;
+      if (customEndDate && date > new Date(customEndDate + 'T23:59:59')) return false;
+      return true;
+    }
     const date = new Date(dateStr);
     const now = new Date();
     const daysAgo = new Date();
     daysAgo.setDate(now.getDate() - Number(dateRange));
     return date >= daysAgo;
+  };
+
+  // Get date range object for Excel exports
+  const getDateRangeForExport = () => {
+    if (dateRange === 'custom' && customStartDate && customEndDate) {
+      return { start: customStartDate, end: customEndDate };
+    }
+    if (dateRange === 'all') return undefined;
+    const now = new Date();
+    const start = new Date();
+    start.setDate(now.getDate() - Number(dateRange));
+    return {
+      start: start.toISOString().split('T')[0],
+      end: now.toISOString().split('T')[0]
+    };
   };
 
   // Filter data by selected company and date range
@@ -364,6 +392,66 @@ export const Reports = () => {
     toast.success('Excel raporu indirildi');
   };
 
+  // Enhanced Excel export handlers for each tab
+  const handleExportOverviewExcel = () => {
+    exportOverviewReport(
+      companies,
+      filteredData.personnel,
+      filteredData.incidents,
+      filteredData.trainings,
+      filteredData.ppes,
+      filteredData.risks,
+      getDateRangeForExport(),
+      selectedCompanyId
+    );
+    toast.success('Detaylı genel rapor Excel\'e aktarıldı');
+  };
+
+  const handleExportIncidentsExcel = () => {
+    exportIncidentsReport(
+      filteredData.incidents,
+      companies,
+      personnel,
+      getDateRangeForExport(),
+      selectedCompanyId
+    );
+    toast.success('Detaylı olay raporu Excel\'e aktarıldı');
+  };
+
+  const handleExportTrainingsExcel = () => {
+    exportTrainingsReport(
+      filteredData.trainings,
+      personnel,
+      getDateRangeForExport()
+    );
+    toast.success('Detaylı eğitim raporu Excel\'e aktarıldı');
+  };
+
+  const handleExportPersonnelExcel = () => {
+    exportPersonnelReport(
+      filteredData.personnel,
+      companies
+    );
+    toast.success('Detaylı personel raporu Excel\'e aktarıldı');
+  };
+
+  const handleExportPPEExcel = () => {
+    exportPPEReport(
+      filteredData.ppes,
+      personnel,
+      getDateRangeForExport()
+    );
+    toast.success('Detaylı KKD raporu Excel\'e aktarıldı');
+  };
+
+  const handleExportRiskExcel = () => {
+    exportRiskReport(
+      filteredData.risks,
+      getDateRangeForExport()
+    );
+    toast.success('Detaylı risk raporu Excel\'e aktarıldı');
+  };
+
   const tooltipStyle = {
     backgroundColor: isDark ? '#1e293b' : '#fff',
     border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
@@ -434,29 +522,79 @@ export const Reports = () => {
   const dateRangeLabel = dateRange === 'all' ? 'Tüm Zamanlar' :
     dateRange === '7' ? 'Son 7 Gün' :
     dateRange === '30' ? 'Son 30 Gün' :
-    dateRange === '90' ? 'Son 90 Gün' : 'Son 1 Yıl';
+    dateRange === '90' ? 'Son 90 Gün' :
+    dateRange === '365' ? 'Son 1 Yıl' :
+    dateRange === 'custom' ? 'Özel Tarih Aralığı' : 'Tüm Zamanlar';
+
+  // Get the per-tab export handler
+  const getTabExportHandler = () => {
+    switch (activeTab) {
+      case 'overview': return handleExportOverviewExcel;
+      case 'incidents': return handleExportIncidentsExcel;
+      case 'trainings': return handleExportTrainingsExcel;
+      case 'personnel': return handleExportPersonnelExcel;
+      case 'ppe': return handleExportPPEExcel;
+      case 'risks': return handleExportRiskExcel;
+      default: return handleExportOverviewExcel;
+    }
+  };
+
+  const getTabExportLabel = () => {
+    switch (activeTab) {
+      case 'overview': return 'Genel Rapor';
+      case 'incidents': return 'Olay Raporu';
+      case 'trainings': return 'Eğitim Raporu';
+      case 'personnel': return 'Personel Raporu';
+      case 'ppe': return 'KKD Raporu';
+      case 'risks': return 'Risk Raporu';
+      default: return 'Rapor';
+    }
+  };
 
   return (
     <PageTransition>
       <div className="space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
-              Analiz ve Raporlar
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">
-              İSG verilerinin kapsamlı analizi ve istatistikleri.
-              {dateRange !== 'all' && (
-                <span className="ml-2 text-indigo-600 dark:text-indigo-400 font-medium">({dateRangeLabel})</span>
-              )}
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+                Analiz ve Raporlar
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">
+                İSG verilerinin kapsamlı analizi ve istatistikleri.
+                {dateRange !== 'all' && (
+                  <span className="ml-2 text-indigo-600 dark:text-indigo-400 font-medium">({dateRangeLabel})</span>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                variant="primary"
+                onClick={getTabExportHandler()}
+                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 border-0 shadow-lg shadow-emerald-500/25"
+              >
+                <Table2 className="h-4 w-4" /> {getTabExportLabel()} Excel
+              </Button>
+              <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
+                <Download className="h-4 w-4" /> Özet Excel
+              </Button>
+              <Button variant="secondary" onClick={handleExportPDF} className="gap-2">
+                <FileText className="h-4 w-4" /> PDF
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+
+          {/* Filters Row */}
+          <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-[#09090b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <Filter className="h-4 w-4 text-indigo-500" />
+              Filtreler:
+            </div>
             <select
               value={selectedCompanyId}
               onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
             >
               <option value="all">Tüm Firmalar</option>
               {companies.map(c => (
@@ -465,21 +603,56 @@ export const Reports = () => {
             </select>
             <select
               value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
+              onChange={(e) => {
+                setDateRange(e.target.value);
+                if (e.target.value !== 'custom') {
+                  setShowDatePicker(false);
+                } else {
+                  setShowDatePicker(true);
+                }
+              }}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
             >
               <option value="all">Tüm Zamanlar</option>
               <option value="7">Son 7 gün</option>
               <option value="30">Son 30 gün</option>
               <option value="90">Son 90 gün</option>
               <option value="365">Son 1 yıl</option>
+              <option value="custom">Özel Tarih Aralığı</option>
             </select>
-            <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
-              <Download className="h-4 w-4" /> Excel
-            </Button>
-            <Button variant="secondary" onClick={handleExportPDF} className="gap-2">
-              <FileText className="h-4 w-4" /> PDF
-            </Button>
+            
+            {dateRange === 'custom' && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                className="flex items-center gap-2"
+              >
+                <div className="flex items-center gap-1.5">
+                  <CalendarDays className="h-4 w-4 text-slate-400" />
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
+                    placeholder="Başlangıç"
+                  />
+                </div>
+                <span className="text-slate-400 text-sm">—</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
+                  placeholder="Bitiş"
+                />
+                {customStartDate && customEndDate && (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                    {Math.ceil((new Date(customEndDate).getTime() - new Date(customStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} gün
+                  </span>
+                )}
+              </motion.div>
+            )}
           </div>
         </div>
 

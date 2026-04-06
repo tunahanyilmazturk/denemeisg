@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, Building2, Users, AlertTriangle, Settings, GraduationCap, HardHat,
   ShieldAlert, ChevronLeft, ChevronRight, FileText, LogOut, Bell, ChevronDown,
-  BarChart3
+  BarChart3, X, Award
 } from 'lucide-react';
 import { cn } from '../ui/Button';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,6 +59,7 @@ const getNavSections = (userRole?: string): NavSection[] => {
       items: [
         { icon: AlertTriangle, label: 'Kaza/Olay', path: '/incidents' },
         { icon: GraduationCap, label: 'Eğitimler', path: '/trainings' },
+        { icon: Award, label: 'Sertifikalar', path: '/certificates' },
         { icon: ShieldAlert, label: 'Risk Değerlendirme', path: '/risks' },
         { icon: HardHat, label: 'KKD Takibi', path: '/ppe' },
       ]
@@ -129,7 +130,7 @@ const Tooltip: React.FC<TooltipProps> = ({ children, content, show }) => {
 export const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { sidebarCollapsed, toggleSidebar, incidents, trainings } = useStore();
+  const { sidebarCollapsed, toggleSidebar, incidents, trainings, setMobileSidebarOpen } = useStore();
   const { user, logout } = useAuthStore();
   
   // Dynamic navigation based on role
@@ -139,15 +140,41 @@ export const Sidebar = () => {
   const pendingIncidents = incidents.filter(i => i.status === 'İnceleniyor').length;
   const upcomingTrainings = trainings.filter(t => t.status === 'Planlandı').length;
 
+  // Swipe-to-close support for mobile
+  const sidebarRef = useRef<HTMLElement>(null);
+  const touchStartX = useRef<number>(0);
+  const touchDeltaX = useRef<number>(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    // If swiped left more than 80px, close the sidebar
+    if (touchDeltaX.current < -80) {
+      setMobileSidebarOpen(false);
+    }
+  }, [setMobileSidebarOpen]);
+
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
+
   return (
-    <aside 
+    <aside
+      ref={sidebarRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className={cn(
-        "bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full transition-all duration-300 relative overflow-hidden",
-        sidebarCollapsed ? "w-20" : "w-64"
+        "sidebar-container bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full transition-all duration-300 relative overflow-hidden",
+        sidebarCollapsed ? "w-20" : "w-72 lg:w-64"
       )}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 via-transparent to-transparent pointer-events-none" />
@@ -155,7 +182,7 @@ export const Sidebar = () => {
       {/* Header with Logo */}
       <div className={cn(
         "relative flex items-center border-b border-slate-200 dark:border-slate-800 transition-all duration-300",
-        sidebarCollapsed ? "h-16 justify-center px-2" : "h-16 px-6"
+        sidebarCollapsed ? "h-14 sm:h-16 justify-center px-2" : "h-14 sm:h-16 px-6"
       )}>
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
@@ -177,11 +204,22 @@ export const Sidebar = () => {
           )}
         </div>
         
-        {/* Collapse Toggle Button */}
+        {/* Close button for mobile */}
+        <button
+          onClick={() => setMobileSidebarOpen(false)}
+          className={cn(
+            "lg:hidden absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors touch-manipulation",
+            sidebarCollapsed && "hidden"
+          )}
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        {/* Collapse Toggle Button - Desktop only */}
         <button
           onClick={toggleSidebar}
           className={cn(
-            "absolute p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm border border-slate-200 dark:border-slate-700",
+            "hidden lg:block absolute p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm border border-slate-200 dark:border-slate-700",
             sidebarCollapsed ? "right-2 top-1/2 -translate-y-1/2" : "right-4 top-1/2 -translate-y-1/2"
           )}
         >
@@ -194,9 +232,9 @@ export const Sidebar = () => {
       </div>
       
       {/* Navigation */}
-      <nav className="relative flex-1 py-4 overflow-y-auto scrollbar-hide">
+      <nav className="relative flex-1 py-3 sm:py-4 overflow-y-auto scrollbar-hide">
         {navSections.map((section, sectionIdx) => (
-          <div key={section.title || sectionIdx} className={cn("mb-4", sectionIdx > 0 && !sidebarCollapsed && "mt-6")}>
+          <div key={section.title || sectionIdx} className={cn("mb-3 sm:mb-4", sectionIdx > 0 && !sidebarCollapsed && "mt-4 sm:mt-6")}>
             {!sidebarCollapsed && section.title && (
               <div className="px-6 mb-2">
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -215,11 +253,11 @@ export const Sidebar = () => {
                     <NavLink
                       to={item.path}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-xl font-medium transition-all duration-300",
+                        "sidebar-nav-item group relative flex items-center gap-3 rounded-xl font-medium transition-all duration-300 touch-manipulation",
                         sidebarCollapsed ? "justify-center px-2 py-3" : "px-4 py-3",
-                        active 
-                          ? "text-indigo-700 dark:text-indigo-300" 
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                        active
+                          ? "text-indigo-700 dark:text-indigo-300"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 active:bg-slate-100 dark:active:bg-slate-800"
                       )}
                     >
                       {active && (
@@ -244,7 +282,7 @@ export const Sidebar = () => {
                         )}
                       </div>
                       {!sidebarCollapsed && (
-                        <span className="relative z-10 text-sm whitespace-nowrap">{item.label}</span>
+                        <span className="sidebar-label relative z-10 text-sm whitespace-nowrap">{item.label}</span>
                       )}
                     </NavLink>
                   </Tooltip>
@@ -255,10 +293,30 @@ export const Sidebar = () => {
         ))}
       </nav>
       
+      {/* Settings Link - Always visible on mobile when sidebar is open */}
+      {!sidebarCollapsed && (
+        <div className="px-3 pb-2">
+          <NavLink
+            to="/settings"
+            className={({ isActive }) => cn(
+              "group relative flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-300 touch-manipulation",
+              isActive 
+                ? "text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10" 
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 active:bg-slate-100 dark:active:bg-slate-800"
+            )}
+          >
+            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 dark:group-hover:bg-indigo-500/10 dark:group-hover:text-indigo-400 transition-all">
+              <Settings className="h-5 w-5" />
+            </div>
+            <span className="text-sm">Ayarlar</span>
+          </NavLink>
+        </div>
+      )}
+
       {/* User Profile Card */}
       <div className={cn(
         "relative border-t border-slate-200 dark:border-slate-800 transition-all duration-300",
-        sidebarCollapsed ? "p-3" : "p-4"
+        sidebarCollapsed ? "p-3" : "p-3 sm:p-4"
       )}>
         <Tooltip content={`${user?.firstName} ${user?.lastName} - ${user ? ROLE_LABELS[user.role] : ''}`} show={sidebarCollapsed}>
           <div className={cn(
@@ -295,7 +353,7 @@ export const Sidebar = () => {
                   logout();
                   navigate('/login');
                 }}
-                className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors touch-manipulation"
                 title="Çıkış Yap"
               >
                 <LogOut className="h-4 w-4" />
@@ -305,9 +363,9 @@ export const Sidebar = () => {
         </Tooltip>
       </div>
       
-      {/* Settings Link (Only in collapsed mode) */}
+      {/* Settings Link (Only in collapsed mode - desktop) */}
       {sidebarCollapsed && (
-        <div className="p-2 border-t border-slate-200 dark:border-slate-800">
+        <div className="hidden lg:block p-2 border-t border-slate-200 dark:border-slate-800">
           <Tooltip content="Ayarlar" show={true}>
             <NavLink
               to="/settings"

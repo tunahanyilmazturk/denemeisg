@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useStore, ColorAccent, FontSize, CardStyle, TableDensity, SidebarStyle } from '../store/useStore';
+import { useStore, ColorAccent, FontSize } from '../store/useStore';
 
 // Color accent mapping to HSL values for Tailwind-compatible CSS variables
 const ACCENT_COLORS: Record<ColorAccent, { h: number; s: number; l: number }> = {
@@ -19,24 +19,6 @@ const FONT_SIZES: Record<FontSize, string> = {
   large: '16px',
 };
 
-const CARD_RADIUS: Record<CardStyle, string> = {
-  rounded: '0.75rem',
-  sharp: '0.125rem',
-  pill: '1rem',
-};
-
-const TABLE_PADDING: Record<TableDensity, string> = {
-  comfortable: '0.75rem',
-  compact: '0.375rem',
-  spacious: '1rem',
-};
-
-const SIDEBAR_WIDTH: Record<SidebarStyle, string> = {
-  full: '16rem',
-  compact: '12rem',
-  icons: '4.5rem',
-};
-
 export const useAppearance = () => {
   const { appearanceSettings } = useStore();
 
@@ -52,64 +34,6 @@ export const useAppearance = () => {
 
     // ─── Font Size ───
     root.style.setProperty('--base-font-size', FONT_SIZES[appearanceSettings.fontSize]);
-
-    // ─── Card Style ───
-    root.style.setProperty('--card-radius', CARD_RADIUS[appearanceSettings.cardStyle]);
-
-    // ─── Table Density ───
-    root.style.setProperty('--table-padding', TABLE_PADDING[appearanceSettings.tableDensity]);
-
-    // ─── Sidebar Style ───
-    root.style.setProperty('--sidebar-width', SIDEBAR_WIDTH[appearanceSettings.sidebarStyle]);
-
-    // ─── Animations ───
-    if (appearanceSettings.animationsEnabled) {
-      root.classList.remove('reduce-motion');
-    } else {
-      root.classList.add('reduce-motion');
-    }
-
-    // ─── Transparent Sidebar ───
-    if (appearanceSettings.transparentSidebar) {
-      root.classList.add('transparent-sidebar');
-    } else {
-      root.classList.remove('transparent-sidebar');
-    }
-
-    // ─── Compact Header ───
-    if (appearanceSettings.compactHeader) {
-      root.classList.add('compact-header');
-    } else {
-      root.classList.remove('compact-header');
-    }
-
-    // ─── Hide Stats Cards ───
-    if (appearanceSettings.showStatsCards) {
-      root.classList.remove('hide-stats');
-    } else {
-      root.classList.add('hide-stats');
-    }
-
-    // ─── Hide Breadcrumbs ───
-    if (appearanceSettings.showBreadcrumbs) {
-      root.classList.remove('hide-breadcrumbs');
-    } else {
-      root.classList.add('hide-breadcrumbs');
-    }
-
-    // ─── Sidebar icons mode ───
-    if (appearanceSettings.sidebarStyle === 'icons') {
-      root.classList.add('sidebar-icons-only');
-    } else {
-      root.classList.remove('sidebar-icons-only');
-    }
-
-    // ─── Sidebar compact mode ───
-    if (appearanceSettings.sidebarStyle === 'compact') {
-      root.classList.add('sidebar-compact');
-    } else {
-      root.classList.remove('sidebar-compact');
-    }
 
   }, [appearanceSettings]);
 };

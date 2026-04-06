@@ -227,18 +227,18 @@ export const Dashboard = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-lg">Sistem genel bakış ve özet istatistikler.</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm sm:text-lg">Sistem genel bakış ve özet istatistikler.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <select 
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <select
               value={dateRange}
               onChange={(e) => setDateRange(Number(e.target.value))}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500"
             >
               <option value={7}>Son 7 gün</option>
               <option value={30}>Son 30 gün</option>
@@ -247,10 +247,11 @@ export const Dashboard = () => {
             </select>
             <button
               onClick={handleExportDashboard}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors text-sm font-medium whitespace-nowrap touch-manipulation"
             >
               <Download className="h-4 w-4" />
-              PDF İndir
+              <span className="hidden sm:inline">PDF İndir</span>
+              <span className="sm:hidden">PDF</span>
             </button>
           </div>
         </div>
@@ -270,34 +271,34 @@ export const Dashboard = () => {
               <p className="text-white/70 text-sm max-w-lg">
                 Açık olaylar, yüksek riskler, eğitim tamamlama ve KKD durumuna göre hesaplanan genel güvenlik değerlendirmesi.
               </p>
-              <div className="flex items-center gap-6 mt-4">
-                <div className="text-center">
+              <div className="flex items-center gap-4 sm:gap-6 mt-4 overflow-x-auto pb-1">
+                <div className="text-center shrink-0">
                   <p className="text-white/60 text-xs">Firmalar</p>
-                  <p className="text-white text-xl font-bold">{companies.length}</p>
+                  <p className="text-white text-lg sm:text-xl font-bold">{companies.length}</p>
                 </div>
-                <div className="w-px h-8 bg-white/20" />
-                <div className="text-center">
+                <div className="w-px h-8 bg-white/20 shrink-0" />
+                <div className="text-center shrink-0">
                   <p className="text-white/60 text-xs">Personel</p>
-                  <p className="text-white text-xl font-bold">{personnel.length}</p>
+                  <p className="text-white text-lg sm:text-xl font-bold">{personnel.length}</p>
                 </div>
-                <div className="w-px h-8 bg-white/20" />
-                <div className="text-center">
+                <div className="w-px h-8 bg-white/20 shrink-0" />
+                <div className="text-center shrink-0">
                   <p className="text-white/60 text-xs">Açık Olay</p>
-                  <p className="text-white text-xl font-bold">{openIncidents}</p>
+                  <p className="text-white text-lg sm:text-xl font-bold">{openIncidents}</p>
                 </div>
-                <div className="w-px h-8 bg-white/20" />
-                <div className="text-center">
+                <div className="w-px h-8 bg-white/20 shrink-0" />
+                <div className="text-center shrink-0">
                   <p className="text-white/60 text-xs">Yüksek Risk</p>
-                  <p className="text-white text-xl font-bold">{highRisks}</p>
+                  <p className="text-white text-lg sm:text-xl font-bold">{highRisks}</p>
                 </div>
               </div>
             </div>
-            <div className="flex flex-col items-center">
-              <div className={`relative w-28 h-28 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center border-4 ${
+            <div className="flex flex-col items-center shrink-0">
+              <div className={`relative w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center border-4 ${
                 safetyScore >= 80 ? 'border-emerald-400' : safetyScore >= 60 ? 'border-amber-400' : 'border-red-400'
               }`}>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-white">{safetyScore}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-white">{safetyScore}</p>
                   <p className="text-xs text-white/70">/100</p>
                 </div>
               </div>
@@ -376,7 +377,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Gradient Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="hidden lg:grid lg:grid-cols-4 gap-4">
           {[
             { label: 'Toplam Personel', value: personnel.length, icon: Users, gradient: 'from-indigo-500 to-purple-600', subtext: `${activePersonnel} aktif` },
             { label: 'Açık Olaylar', value: openIncidents, icon: AlertTriangle, gradient: 'from-red-500 to-rose-600', subtext: `${criticalIncidents} yüksek öncelikli` },
@@ -388,22 +389,22 @@ export const Dashboard = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.08 }}
-              className={`relative overflow-hidden bg-gradient-to-br ${stat.gradient} rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-300`}
+              className={`relative overflow-hidden bg-gradient-to-br ${stat.gradient} rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-lg hover:shadow-xl transition-all duration-300`}
             >
               <div className="relative z-10">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-white/80">{stat.label}</p>
-                    <p className="text-3xl font-display font-bold text-white mt-1">{stat.value}</p>
-                    <p className="text-xs text-white/70 mt-1">{stat.subtext}</p>
+                    <p className="text-xs sm:text-sm font-medium text-white/80">{stat.label}</p>
+                    <p className="text-2xl sm:text-3xl font-display font-bold text-white mt-0.5 sm:mt-1">{stat.value}</p>
+                    <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 sm:mt-1">{stat.subtext}</p>
                   </div>
-                  <div className="p-3 bg-white/20 backdrop-blur-xl rounded-xl">
-                    <stat.icon className="h-6 w-6 text-white" />
+                  <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-xl rounded-lg sm:rounded-xl">
+                    <stat.icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                   </div>
                 </div>
               </div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
+              <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/10 rounded-full -mr-10 -mt-10 sm:-mr-16 sm:-mt-16" />
+              <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-full -ml-8 -mb-8 sm:-ml-12 sm:-mb-12" />
             </motion.div>
           ))}
         </div>

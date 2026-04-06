@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Button } from '../components/ui/Button';
@@ -8,7 +8,7 @@ import { Training, TrainingStatus } from '../types';
 import toast from 'react-hot-toast';
 import {
   Plus, ChevronRight, ChevronLeft, GraduationCap, ClipboardList, Users,
-  Check, X, Info, Search, Calendar, Clock
+  Check, X, Info, Search, Calendar, Clock, Building2, CheckCircle, UserCheck
 } from 'lucide-react';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ const getStatusColor = (status: TrainingStatus) => {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export const NewTrainingWizard = () => {
   const navigate = useNavigate();
-  const { addTraining, personnel } = useStore();
+  const { addTraining, personnel, companies } = useStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Training>>({
@@ -102,6 +102,7 @@ export const NewTrainingWizard = () => {
     status: 'Planlandı',
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [companyFilter, setCompanyFilter] = useState<string>('all');
 
   const totalSteps = 3;
 
@@ -196,10 +197,51 @@ export const NewTrainingWizard = () => {
     }
   };
 
-  const filteredPersonnel = personnel.filter(p =>
-    `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPersonnel = useMemo(() => {
+    let result = [...personnel];
+    
+    // Company filter
+    if (companyFilter && companyFilter !== 'all') {
+      result = result.filter(p => p.assignedCompanyId === companyFilter);
+    }
+    
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(p =>
+        `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
+        p.role.toLowerCase().includes(term)
+      );
+    }
+    
+    return result;
+  }, [personnel, companyFilter, searchTerm]);
+
+  // Group filtered personnel by company
+  const groupedPersonnel: Record<string, typeof filteredPersonnel> = useMemo(() => {
+    const groups: Record<string, typeof filteredPersonnel> = {};
+    filteredPersonnel.forEach(p => {
+      const companyName = p.assignedCompanyId
+        ? companies.find(c => c.id === p.assignedCompanyId)?.name || 'Diğer'
+        : 'Firmaya Atanmamış';
+      if (!groups[companyName]) groups[companyName] = [];
+      groups[companyName].push(p);
+    });
+    return groups;
+  }, [filteredPersonnel, companies]);
+
+  const selectAllFiltered = () => {
+    const currentParticipants = formData.participants || [];
+    const newIds = filteredPersonnel
+      .filter(p => !currentParticipants.includes(p.id))
+      .map(p => p.id);
+    setFormData({ ...formData, participants: [...currentParticipants, ...newIds] });
+  };
+
+  const deselectAllFiltered = () => {
+    const filteredIds = new Set(filteredPersonnel.map(p => p.id));
+    setFormData({ ...formData, participants: (formData.participants || []).filter(id => !filteredIds.has(id)) });
+  };
 
   // ─── RENDER STEP CONTENT ──────────────────────────────────────────────────────
   const renderStepContent = () => {
@@ -388,70 +430,122 @@ export const NewTrainingWizard = () => {
               </div>
             </div>
 
-            {/* Arama */}
+            {/* Search & Company Filter */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
                 <Search className="h-3.5 w-3.5" />
-                Personel Ara
+                Filtrele ve Ara
               </h3>
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  className={`${inputClass} pl-10`}
-                  placeholder="Personel adı veya rol ara..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    className={`${inputClass} pl-10`}
+                    placeholder="Personel adı veya rol ara..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <select
+                  className={selectClass}
+                  value={companyFilter}
+                  onChange={e => setCompanyFilter(e.target.value)}
+                >
+                  <option value="all">Tüm Firmalar</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                  <option value="unassigned">Firmaya Atanmamış</option>
+                </select>
               </div>
             </div>
 
-            {/* Personel Listesi */}
-            <div className="space-y-3">
+            {/* Bulk Actions & Selection Count */}
+            <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
                 <Users className="h-3.5 w-3.5" />
-                Personel Seçimi ({(formData.participants || []).length} seçildi)
+                Personel Seçimi
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                  {(formData.participants || []).length} / {personnel.length}
+                </span>
               </h3>
-              {personnel.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                  <Users className="h-10 w-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Sistemde Personel Yok</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-500">Önce personel ekleyerek başlayın</p>
-                </div>
-              ) : (
-                <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 max-h-[400px] overflow-y-auto space-y-2">
-                  {filteredPersonnel.map(p => (
-                    <label
-                      key={p.id}
-                      className="flex items-center gap-3 cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all group"
-                    >
-                      <input
-                        type="checkbox"
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 w-4 h-4"
-                        checked={formData.participants?.includes(p.id) || false}
-                        onChange={() => toggleParticipant(p.id)}
-                      />
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                          {p.firstName[0]}{p.lastName[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                            {p.firstName} {p.lastName}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{p.role}</p>
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                  {filteredPersonnel.length === 0 && (
-                    <div className="text-center py-6">
-                      <Search className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Arama sonucu bulunamadı</p>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selectAllFiltered}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex items-center gap-1"
+                >
+                  <CheckCircle className="h-3.5 w-3.5" /> Tümünü Seç
+                </button>
+                <span className="text-slate-300 dark:text-slate-600">|</span>
+                <button
+                  type="button"
+                  onClick={deselectAllFiltered}
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:underline font-medium flex items-center gap-1"
+                >
+                  <X className="h-3.5 w-3.5" /> Temizle
+                </button>
+              </div>
             </div>
+
+            {/* Personel Listesi - Grouped */}
+            {personnel.length === 0 ? (
+              <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                <Users className="h-10 w-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Sistemde Personel Yok</p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">Önce personel ekleyerek başlayın</p>
+              </div>
+            ) : filteredPersonnel.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                <Search className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">Arama sonucu bulunamadı</p>
+              </div>
+            ) : (
+              <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 max-h-[400px] overflow-y-auto space-y-4">
+                {Object.entries(groupedPersonnel).map(([groupName, members]) => (
+                  <div key={groupName}>
+                    <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm py-1 -mx-1 px-1 rounded-lg">
+                      <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">{groupName}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">({members.length})</span>
+                    </div>
+                    <div className="space-y-1">
+                      {members.map(p => (
+                        <label
+                          key={p.id}
+                          className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg transition-all group ${
+                            formData.participants?.includes(p.id)
+                              ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800'
+                              : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 w-4 h-4"
+                            checked={formData.participants?.includes(p.id) || false}
+                            onChange={() => toggleParticipant(p.id)}
+                          />
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                              {p.firstName[0]}{p.lastName[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                {p.firstName} {p.lastName}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{p.role}</p>
+                            </div>
+                            {formData.participants?.includes(p.id) && (
+                              <UserCheck className="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Bilgi notu */}
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
@@ -609,7 +703,7 @@ export const NewTrainingWizard = () => {
           </div>
 
           {/* Fixed Navigation Buttons */}
-          <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 lg:px-6 py-3">
+          <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 lg:px-6 py-3 wizard-nav-buttons">
             <div className="max-w-4xl mx-auto w-full flex justify-between items-center gap-3">
               <Button
                 variant="ghost"

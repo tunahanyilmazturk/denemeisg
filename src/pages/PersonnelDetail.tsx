@@ -9,15 +9,27 @@ import {
   ArrowLeft, Save, User, Phone, Mail, Calendar, Building2, Shield, Heart,
   Award, AlertCircle, Plus, X, Edit2, Trash2, Clock, MapPin,
   Key, Lock, Unlock, Check,
-  ClipboardList, Briefcase, GraduationCap, UserCheck, Info
+  ClipboardList, Briefcase, GraduationCap, UserCheck, Info, Download, FileText, Activity, TrendingUp
 } from 'lucide-react';
 import { Personnel, PersonnelClass, PersonnelStatus, BloodType, MedicalExam } from '../types';
+import { exportPersonnelReport } from '../utils/exportUtils';
 import toast from 'react-hot-toast';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const CLASSES: PersonnelClass[] = ['A', 'B', 'C'];
 const STATUSES: PersonnelStatus[] = ['Aktif', 'Pasif', 'İstifa Etti'];
 const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+'];
+
+// İSG Rolleri
+const ISG_ROLES = [
+  'İşyeri Hekimi',
+  'İş Güvenliği Uzmanı',
+  'İşyeri Hemşiresi',
+  'Sağlık Teknikeri',
+  'İşyeri Hekimi Yardımcısı',
+  'İş Güvenliği Teknikeri',
+  'İşyeri Hekimi Asistanı',
+];
 
 const STATUS_COLORS: Record<PersonnelStatus, string> = {
   'Aktif':        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
@@ -136,7 +148,10 @@ export const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { personnel, companies, updatePersonnel, deletePersonnel, incidents, trainings, ppes: ppeList } = useStore();
-  const { systemUsers, resetUserPassword, toggleUserStatus, deleteSystemUser } = useAuthStore();
+  const { systemUsers, resetUserPassword, toggleUserStatus, deleteSystemUser, hasRole } = useAuthStore();
+
+  // Permission check
+  const canEdit = hasRole(['superadmin', 'admin', 'mudur']);
 
   const person = personnel.find(p => p.id === id);
   const company = person ? companies.find(c => c.id === person.assignedCompanyId) : null;
@@ -159,6 +174,38 @@ export const PersonnelDetail = () => {
   const linkedUser = useMemo(() =>
     person ? systemUsers.find(u => u.email === person.email) : null, [person, systemUsers]
   );
+
+  // Check if person is ISG role
+  const isISGRole = person && ISG_ROLES.includes(person.role);
+  
+  // Check if assigned as company ISG specialist or doctor
+  const assignedAsISG = useMemo(() => {
+    if (!person || !person.assignedCompanyId) return null;
+    const assignedCompany = companies.find(c => c.id === person.assignedCompanyId);
+    if (!assignedCompany) return null;
+    
+    if (assignedCompany.isgSpecialistId === person.id) return 'İSG Uzmanı';
+    if (assignedCompany.workplaceDoctorId === person.id) return 'İşyeri Hekimi';
+    return null;
+  }, [person, companies]);
+
+  // Statistics
+  const personnelStats = useMemo(() => {
+    if (!person) return null;
+    
+    const workDays = person.startDate
+      ? Math.floor((new Date().getTime() - new Date(person.startDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    
+    return {
+      incidents: personIncidents.length,
+      trainings: personTrainings.length,
+      certifications: (person.certifications || []).length,
+      medicalExams: (person.medicalExams || []).length,
+      workDays,
+      workYears: (workDays / 365).toFixed(1),
+    };
+  }, [person, personIncidents, personTrainings]);
 
   if (!person) {
     return (
@@ -255,6 +302,13 @@ export const PersonnelDetail = () => {
     }
   };
 
+  // Export handler
+  const handleExport = () => {
+    if (!person) return;
+    exportPersonnelReport([person], companies);
+    toast.success('Personel raporu dışa aktarıldı.');
+  };
+
   // Get badges for sidebar
   const getBadge = (section: DetailSection): number | undefined => {
     switch (section) {
@@ -277,16 +331,95 @@ export const PersonnelDetail = () => {
         return (
           <div className="space-y-5">
             <div className="pb-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <User className="h-4.5 w-4.5 text-white" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <User className="h-4.5 w-4.5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Kişisel Bilgiler</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Ad, soyad, TC kimlik ve temel bilgiler</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Kişisel Bilgiler</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Ad, soyad, TC kimlik ve temel bilgiler</p>
-                </div>
+                <Button variant="secondary" onClick={handleExport} className="gap-2 text-xs">
+                  <Download className="h-3.5 w-3.5" /> Dışa Aktar
+                </Button>
               </div>
             </div>
+
+            {/* Statistics Cards */}
+            {personnelStats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Olaylar</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{personnelStats.incidents}</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">Kayıtlı olay</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-xl p-4 border border-violet-200 dark:border-violet-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <ClipboardList className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                    <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Eğitimler</span>
+                  </div>
+                  <p className="text-2xl font-bold text-violet-900 dark:text-violet-100">{personnelStats.trainings}</p>
+                  <p className="text-xs text-violet-700 dark:text-violet-300 mt-0.5">Katılım</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <Award className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Sertifikalar</span>
+                  </div>
+                  <p className="text-2xl font-bold text-amber-900 dark:text-amber-100">{personnelStats.certifications}</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">Belge</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Çalışma</span>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">{personnelStats.workYears}</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Yıl</p>
+                </div>
+              </div>
+            )}
+
+            {/* ISG Role Indicator */}
+            {(isISGRole || assignedAsISG) && (
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg">
+                    <Shield className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-100">İSG Personeli</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        {person.role}
+                      </span>
+                    </div>
+                    <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                      {assignedAsISG ? (
+                        <>Bu personel <strong>{company?.name}</strong> firmasında <strong>{assignedAsISG}</strong> olarak görevlendirilmiştir.</>
+                      ) : (
+                        <>Bu personel İş Sağlığı ve Güvenliği uzmanı olarak sınıflandırılmıştır.</>
+                      )}
+                    </p>
+                    {person.class && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                          {person.class} Sınıfı
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
@@ -1175,12 +1308,16 @@ export const PersonnelDetail = () => {
                   </>
                 ) : (
                   <>
-                    <Button variant="danger" onClick={handleDelete} className="gap-2">
-                      <Trash2 className="h-4 w-4" /> Sil
-                    </Button>
-                    <Button variant="secondary" onClick={startEditing} className="gap-2 px-6">
-                      <Edit2 className="h-4 w-4" /> Düzenle
-                    </Button>
+                    {canEdit && (
+                      <>
+                        <Button variant="danger" onClick={handleDelete} className="gap-2">
+                          <Trash2 className="h-4 w-4" /> Sil
+                        </Button>
+                        <Button variant="secondary" onClick={startEditing} className="gap-2 px-6">
+                          <Edit2 className="h-4 w-4" /> Düzenle
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
               </div>

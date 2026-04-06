@@ -7,8 +7,9 @@ import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { useDataTable } from '../hooks/useDataTable';
 import { exportToPDF, exportToExcel } from '../utils/exportUtils';
-import { Plus, Download, FileText, Search, Edit2, Trash2, GraduationCap, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, Users, Clock, ChevronLeft, ChevronRight, Building2, BookOpen } from 'lucide-react';
+import { Plus, Download, FileText, Search, Edit2, Trash2, GraduationCap, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, Users, Clock, ChevronLeft, ChevronRight, Building2, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { Training, TrainingStatus } from '../types';
+import { exportTrainingsReport } from '../utils/exportUtils';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
 
@@ -20,7 +21,7 @@ export const Trainings = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTraining, setCurrentTraining] = useState<Partial<Training>>({ participants: [] });
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 1024 ? 'grid' : 'list');
   const [selectedTrainings, setSelectedTrainings] = useState<Set<string>>(new Set());
   const [detailTrainingId, setDetailTrainingId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -228,6 +229,11 @@ export const Trainings = () => {
     toast.success('Excel başarıyla indirildi.');
   };
 
+  const handleDetailedExport = () => {
+    exportTrainingsReport(filteredTrainings, personnel);
+    toast.success('Detaylı rapor Excel olarak indirildi.');
+  };
+
   const getStatusColor = (status: TrainingStatus) => {
     switch(status) {
       case 'İptal': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
@@ -412,69 +418,69 @@ export const Trainings = () => {
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <GraduationCap className="h-6 w-6" />
+        <div className="hidden lg:grid lg:grid-cols-6 gap-4">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <GraduationCap className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.total}</p>
-            <p className="text-sm text-white/80">Toplam Eğitim</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.total}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Eğitim</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Calendar className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Calendar className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.planned}</p>
-            <p className="text-sm text-white/80">Planlandı</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.planned}</p>
+            <p className="text-xs sm:text-sm text-white/80">Planlandı</p>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <CheckSquare className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <CheckSquare className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.completed}</p>
-            <p className="text-sm text-white/80">Tamamlandı</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.completed}</p>
+            <p className="text-xs sm:text-sm text-white/80">Tamamlandı</p>
           </div>
 
-          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <X className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <X className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
-              <TrendingUp className="h-5 w-5 opacity-70" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-70 hidden sm:block" />
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.cancelled}</p>
-            <p className="text-sm text-white/80">İptal</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.cancelled}</p>
+            <p className="text-xs sm:text-sm text-white/80">İptal</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Users className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Users className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.totalParticipants}</p>
-            <p className="text-sm text-white/80">Toplam Katılımcı</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.totalParticipants}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Katılımcı</p>
           </div>
 
-          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Clock className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Clock className="h-4 w-4 sm:h-6 sm:w-6" />
               </div>
             </div>
-            <p className="text-2xl font-bold mb-1">{stats.totalHours}</p>
-            <p className="text-sm text-white/80">Toplam Saat</p>
+            <p className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1">{stats.totalHours}</p>
+            <p className="text-xs sm:text-sm text-white/80">Toplam Saat</p>
           </div>
         </div>
 
@@ -490,6 +496,11 @@ export const Trainings = () => {
                 <Trash2 className="h-4 w-4" /> Seçilileri Sil ({selectedTrainings.size})
               </Button>
             )}
+            <div className="relative flex-1 sm:flex-none">
+              <Button variant="secondary" onClick={handleDetailedExport} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" /> Detaylı Rapor
+              </Button>
+            </div>
             <Button variant="secondary" onClick={handleExportExcel} className="gap-2">
               <Download className="h-4 w-4" /> Excel
             </Button>

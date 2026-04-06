@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Moon, Sun, Bell, User, AlertTriangle, CheckCircle, Search, Menu,
   Shield, TrendingUp, Activity, LogOut, Settings as SettingsIcon,
-  Command, Clock, Zap, Award, Key
+  Command, Clock, Zap, Award, Key, X
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -12,13 +12,14 @@ import { cn } from '../ui/Button';
 import { ROLE_LABELS } from '../../types/auth';
 
 export const Header = () => {
-  const { isDarkMode, toggleDarkMode, incidents, trainings, risks, personnel } = useStore();
+  const { isDarkMode, toggleDarkMode, incidents, trainings, risks, personnel, toggleMobileSidebar } = useStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const location = useLocation();
 
   const recentIncidents = incidents.slice(-5).reverse();
@@ -96,15 +97,29 @@ export const Header = () => {
   };
 
   return (
-    <header className="h-16 bg-white/40 dark:bg-[#09090b]/40 backdrop-blur-2xl border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between px-6 transition-all duration-200 sticky top-0 z-30">
-      {/* Left Section - Page Title & Search */}
-      <div className="flex items-center gap-4 flex-1">
+    <header className="h-14 sm:h-16 bg-white/40 dark:bg-[#09090b]/40 backdrop-blur-2xl border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between px-3 sm:px-6 transition-all duration-200 sticky top-0 z-30">
+      {/* Left Section - Mobile Menu + Page Title & Search */}
+      <div className="flex items-center gap-2 sm:gap-4 flex-1">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={toggleMobileSidebar}
+          className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-colors touch-manipulation"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         {/* Page Title - Hidden on mobile */}
         <div className="hidden lg:block">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white">{getPageTitle()}</h2>
         </div>
 
-        {/* Search Bar */}
+        {/* Mobile Page Title */}
+        <div className="lg:hidden">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-white truncate max-w-[140px] sm:max-w-[200px]">{getPageTitle()}</h2>
+        </div>
+
+        {/* Search Bar - Desktop */}
         <div className="relative max-w-md flex-1 hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
@@ -124,7 +139,16 @@ export const Header = () => {
       </div>
       
       {/* Right Section - Actions & User */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* Mobile Search Button */}
+        <button
+          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          className="md:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-colors touch-manipulation"
+          aria-label="Search"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+
         {/* System Health Indicator */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
           <div className={`w-2 h-2 rounded-full ${getHealthBgColor(healthScore)} animate-pulse`} />
@@ -137,7 +161,7 @@ export const Header = () => {
         <motion.button 
           whileTap={{ scale: 0.95 }}
           onClick={toggleDarkMode}
-          className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-all duration-200 relative overflow-hidden"
+          className="p-2 sm:p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-all duration-200 relative overflow-hidden touch-manipulation"
           aria-label="Toggle Dark Mode"
         >
           <motion.div
@@ -158,14 +182,14 @@ export const Header = () => {
               setShowNotifications(!showNotifications);
               setShowUserMenu(false);
             }}
-            className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-all duration-200 relative"
+            className="p-2 sm:p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/50 transition-all duration-200 relative touch-manipulation"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
               <motion.span 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-[#09090b]"
+                className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-[#09090b]"
               />
             )}
           </motion.button>
@@ -185,7 +209,7 @@ export const Header = () => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute right-0 mt-2 w-96 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60 z-50 overflow-hidden"
+                  className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-96 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60 z-50 overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between">
@@ -197,7 +221,7 @@ export const Header = () => {
                       {unreadCount} Açık
                     </span>
                   </div>
-                  <div className="max-h-96 overflow-y-auto">
+                  <div className="max-h-80 sm:max-h-96 overflow-y-auto">
                     {recentIncidents.length > 0 ? (
                       <div className="divide-y divide-slate-100/60 dark:divide-slate-800/60">
                         {recentIncidents.map(incident => (
@@ -205,9 +229,9 @@ export const Header = () => {
                             key={incident.id} 
                             to="/incidents"
                             onClick={() => setShowNotifications(false)}
-                            className="flex items-start gap-3 p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group"
+                            className="flex items-start gap-3 p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group active:bg-slate-100 dark:active:bg-slate-800"
                           >
-                            <div className={`p-2.5 rounded-xl shrink-0 ${
+                            <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 ${
                               incident.severity === 'Kritik' ? 'bg-gradient-to-br from-red-500 to-rose-600' :
                               incident.severity === 'Yüksek' ? 'bg-gradient-to-br from-orange-500 to-red-600' :
                               incident.severity === 'Orta' ? 'bg-gradient-to-br from-amber-500 to-orange-600' :
@@ -232,11 +256,11 @@ export const Header = () => {
                                   {new Date(incident.date).toLocaleDateString('tr-TR')}
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">
                                 {incident.location}
                               </p>
                             </div>
-                            <span className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 hidden sm:block ${
                               incident.status === 'Açık' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
                               incident.status === 'İnceleniyor' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
                               'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
@@ -278,9 +302,9 @@ export const Header = () => {
               setShowUserMenu(!showUserMenu);
               setShowNotifications(false);
             }}
-            className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white ml-2 shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:scale-105 transition-all relative"
+            className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white ml-1 sm:ml-2 shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:scale-105 transition-all relative touch-manipulation"
           >
-            <User className="h-5 w-5" />
+            <User className="h-4 w-4 sm:h-5 sm:w-5" />
           </motion.button>
 
           <AnimatePresence>
@@ -298,18 +322,18 @@ export const Header = () => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute right-0 mt-2 w-80 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60 z-50 overflow-hidden"
+                  className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-80 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60 z-50 overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* User Info Header */}
                   <div className="p-4 bg-gradient-to-r from-indigo-500 to-purple-500">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center text-white font-semibold text-lg">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center text-white font-semibold text-base sm:text-lg">
                         {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                       </div>
-                      <div>
-                        <p className="font-semibold text-white">{user?.firstName} {user?.lastName}</p>
-                        <p className="text-xs text-white/70">{user?.email}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white truncate">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-xs text-white/70 truncate">{user?.email}</p>
                       </div>
                     </div>
                     <div className="mt-3 px-2 py-1.5 bg-white/10 rounded-lg backdrop-blur-sm">
@@ -323,36 +347,36 @@ export const Header = () => {
                   </div>
 
                   {/* Quick Stats */}
-                  <div className="p-4 border-b border-slate-200/60 dark:border-slate-800/60">
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-3">Hızlı Durum</p>
+                  <div className="p-3 sm:p-4 border-b border-slate-200/60 dark:border-slate-800/60">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 sm:mb-3">Hızlı Durum</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="p-3 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-xl border border-red-100 dark:border-red-800/30">
+                      <div className="p-2 sm:p-3 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-xl border border-red-100 dark:border-red-800/30">
                         <div className="flex items-center gap-2 mb-1">
-                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                          <span className="text-xs text-slate-600 dark:text-slate-400">Açık Olay</span>
+                          <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 dark:text-red-400" />
+                          <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Açık Olay</span>
                         </div>
-                        <p className="text-lg font-bold text-red-600 dark:text-red-400">{openIncidents}</p>
+                        <p className="text-base sm:text-lg font-bold text-red-600 dark:text-red-400">{openIncidents}</p>
                       </div>
-                      <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-100 dark:border-amber-800/30">
+                      <div className="p-2 sm:p-3 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl border border-amber-100 dark:border-amber-800/30">
                         <div className="flex items-center gap-2 mb-1">
-                          <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                          <span className="text-xs text-slate-600 dark:text-slate-400">Yüksek Risk</span>
+                          <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
+                          <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Yüksek Risk</span>
                         </div>
-                        <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{highRisks}</p>
+                        <p className="text-base sm:text-lg font-bold text-amber-600 dark:text-amber-400">{highRisks}</p>
                       </div>
-                      <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                      <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
                         <div className="flex items-center gap-2 mb-1">
-                          <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span className="text-xs text-slate-600 dark:text-slate-400">Eğitim</span>
+                          <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
+                          <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Eğitim</span>
                         </div>
-                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{upcomingTrainings}</p>
+                        <p className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">{upcomingTrainings}</p>
                       </div>
-                      <div className="p-3 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+                      <div className="p-2 sm:p-3 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
                         <div className="flex items-center gap-2 mb-1">
-                          <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-xs text-slate-600 dark:text-slate-400">Personel</span>
+                          <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Personel</span>
                         </div>
-                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{activePersonnel}</p>
+                        <p className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">{activePersonnel}</p>
                       </div>
                     </div>
                   </div>
@@ -360,9 +384,19 @@ export const Header = () => {
                   {/* Menu Items */}
                   <div className="p-2">
                     <Link
+                      to="/profile"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 active:bg-slate-200 dark:active:bg-slate-700 transition-colors group touch-manipulation"
+                    >
+                      <User className="h-4 w-4 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">
+                        Profilim
+                      </span>
+                    </Link>
+                    <Link
                       to="/settings"
                       onClick={() => setShowUserMenu(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group"
+                      className="flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 active:bg-slate-200 dark:active:bg-slate-700 transition-colors group touch-manipulation"
                     >
                       <SettingsIcon className="h-4 w-4 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">
@@ -375,7 +409,7 @@ export const Header = () => {
                         logout();
                         navigate('/login');
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group"
+                      className="w-full flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 transition-colors group touch-manipulation"
                     >
                       <LogOut className="h-4 w-4 text-slate-500 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-red-600 dark:group-hover:text-red-400">
@@ -389,6 +423,38 @@ export const Header = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Mobile Search Overlay */}
+      <AnimatePresence>
+        {mobileSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 md:hidden shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+                />
+              </div>
+              <button
+                onClick={() => setMobileSearchOpen(false)}
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors touch-manipulation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

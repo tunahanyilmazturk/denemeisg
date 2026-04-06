@@ -16,6 +16,9 @@ export interface Company {
   email: string;
   address: string;
   locations?: string[];
+  // İSG Atamaları
+  isgSpecialistId?: string;   // İş Güvenliği Uzmanı personel ID
+  workplaceDoctorId?: string; // İşyeri Hekimi personel ID
   createdAt: string;
 }
 
@@ -159,7 +162,41 @@ export interface Incident {
   incidentDescription?: string;
   medicalTreatmentDescription?: string;
   rootCauseAnalysis?: string;
+  // Fotoğraflar
+  photos?: IncidentPhoto[];
+  // Notlar & Yorumlar
+  notes?: IncidentNote[];
+  // Aktivite Geçmişi
+  activityLog?: ActivityEntry[];
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface IncidentNote {
+  id: string;
+  author: string;
+  content: string;
+  createdAt: string;
+  type?: 'note' | 'action' | 'decision';
+}
+
+export interface ActivityEntry {
+  id: string;
+  action: string;
+  description: string;
+  user: string;
+  timestamp: string;
+  type: 'status_change' | 'edit' | 'note' | 'create' | 'delete' | 'measure' | 'other';
+}
+
+export interface IncidentPhoto {
+  id: string;
+  name: string;
+  url: string; // base64 data URL veya blob URL
+  size: number; // bytes
+  type: string; // MIME type
+  caption?: string;
+  uploadedAt: string;
 }
 
 export interface Training {
@@ -241,5 +278,46 @@ export interface IncidentReasonDefinition {
   category?: 'Human' | 'Equipment' | 'Environment' | 'Method';
   commonInjuries?: InjuryType[];
   createdAt: string;
+}
+
+export type CertificateType =
+  | 'İSG Eğitimi'
+  | 'Yangın Güvenliği'
+  | 'İlk Yardım'
+  | 'Yüksekte Çalışma'
+  | 'Forklift Operatörlüğü'
+  | 'Elektrik Güvenliği'
+  | 'Kimyasal Güvenlik'
+  | 'Acil Durum Eğitimi'
+  | 'Genel Güvenlik'
+  | 'Diğer';
+
+export type CertificateStatus = 'Aktif' | 'Süresi Dolmuş' | 'İptal Edildi';
+
+export interface Certificate {
+  id: string;
+  certificateNo: string;
+  personnelId: string;
+  trainingId?: string; // Linked training if issued from a training
+  type: CertificateType;
+  title: string;
+  description?: string;
+  issueDate: string;
+  expiryDate?: string;
+  status: CertificateStatus;
+  issuer: string; // Who issued the certificate
+  companyId?: string; // Company it was issued for
+  // Letterhead customization
+  companyName?: string;
+  companyLogo?: string; // base64 or URL
+  signatureName?: string;
+  signatureTitle?: string;
+  signatureImage?: string; // base64 signature
+  // Additional fields
+  duration?: number; // Training duration in hours
+  score?: number; // Exam score if applicable
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 

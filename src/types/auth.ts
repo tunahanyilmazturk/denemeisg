@@ -28,6 +28,9 @@ export interface AuthUser {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  // Stamp / Signature for certificates
+  stampImage?: string; // base64 signature/stamp image
+  stampTitle?: string; // e.g. "İSG Uzmanı", "İşyeri Hekimi"
 }
 
 export interface AuthState {

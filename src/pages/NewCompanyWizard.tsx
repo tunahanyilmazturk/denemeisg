@@ -8,7 +8,7 @@ import { Company } from '../types';
 import toast from 'react-hot-toast';
 import {
   Plus, ChevronRight, ChevronLeft, Building2, Phone, MapPin, User,
-  Mail, Check, X, Info, ClipboardList
+  Mail, Check, X, Info, ClipboardList, Shield, Heart, Users
 } from 'lucide-react';
 
 
@@ -41,11 +41,12 @@ const CompanyIcon = ({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' |
 };
 
 // ─── STEP ICONS ─────────────────────────────────────────────────────────────────
-const STEP_ICONS = [Building2, Phone, MapPin];
+const STEP_ICONS = [Building2, Phone, MapPin, Users];
 const STEP_COLORS = [
   'from-indigo-500 to-purple-600',
   'from-blue-500 to-cyan-600',
   'from-emerald-500 to-teal-600',
+  'from-orange-500 to-pink-600',
 ];
 
 const StepItem = ({ num, label, active, completed }: { num: number; label: string; active: boolean; completed: boolean }) => {
@@ -84,7 +85,7 @@ const StepItem = ({ num, label, active, completed }: { num: number; label: strin
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export const NewCompanyWizard = () => {
   const navigate = useNavigate();
-  const { addCompany, sectors, locationDefinitions } = useStore();
+  const { addCompany, sectors, locationDefinitions, personnel } = useStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<Partial<Company>>({
@@ -93,13 +94,25 @@ export const NewCompanyWizard = () => {
   const [newLocation, setNewLocation] = useState('');
   const [sectorLocationsAutoAdded, setSectorLocationsAutoAdded] = useState(false);
 
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   const steps = [
     { num: 1, label: 'Temel Bilgiler' },
     { num: 2, label: 'İletişim & Adres' },
     { num: 3, label: 'Lokasyonlar' },
+    { num: 4, label: 'İSG Atamaları' },
   ];
+
+  // Filter personnel by ISG roles
+  const isgSpecialists = personnel.filter(p =>
+    p.role === 'İş Güvenliği Uzmanı' ||
+    p.role === 'İş Güvenliği Teknikeri'
+  );
+  const workplaceDoctors = personnel.filter(p =>
+    p.role === 'İşyeri Hekimi' ||
+    p.role === 'İşyeri Hekimi Yardımcısı' ||
+    p.role === 'İşyeri Hekimi Asistanı'
+  );
 
   const handleNext = () => {
     if (currentStep === 1) {
@@ -169,10 +182,29 @@ export const NewCompanyWizard = () => {
       email: formData.email!,
       address: formData.address!,
       locations: formData.locations,
+      isgSpecialistId: formData.isgSpecialistId,
+      workplaceDoctorId: formData.workplaceDoctorId,
       createdAt: new Date().toISOString(),
     };
 
     addCompany(newCompany);
+
+    // Auto-assign company to selected personnel
+    if (formData.isgSpecialistId) {
+      const specialist = personnel.find(p => p.id === formData.isgSpecialistId);
+      if (specialist && !specialist.assignedCompanyId) {
+        const { updatePersonnel } = useStore.getState();
+        updatePersonnel({ ...specialist, assignedCompanyId: newCompany.id });
+      }
+    }
+    if (formData.workplaceDoctorId) {
+      const doctor = personnel.find(p => p.id === formData.workplaceDoctorId);
+      if (doctor && !doctor.assignedCompanyId) {
+        const { updatePersonnel } = useStore.getState();
+        updatePersonnel({ ...doctor, assignedCompanyId: newCompany.id });
+      }
+    }
+
     toast.success('Firma başarıyla eklendi!');
     navigate('/companies');
   };
@@ -500,6 +532,166 @@ export const NewCompanyWizard = () => {
           </div>
         );
 
+      // STEP 4: İSG Atamaları
+      case 4:
+        return (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center">
+                  <Users className="h-4.5 w-4.5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">İSG Atamaları</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Firmaya İSG Uzmanı ve İşyeri Hekimi atayabilirsiniz</p>
+                </div>
+              </div>
+            </div>
+
+            {/* İSG Uzmanı Seçimi */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                <Shield className="h-3.5 w-3.5" />
+                İş Güvenliği Uzmanı
+              </h3>
+              <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5" />
+                    İSG Uzmanı Seçiniz
+                  </label>
+                  <select
+                    className={selectClass}
+                    value={formData.isgSpecialistId || ''}
+                    onChange={e => setFormData(p => ({ ...p, isgSpecialistId: e.target.value || undefined }))}
+                  >
+                    <option value="">İSG Uzmanı Seçiniz (Opsiyonel)</option>
+                    {isgSpecialists.map(p => (
+                      <option key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.role}{p.class ? ` (${p.class} Sınıfı)` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.isgSpecialistId ? (
+                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-indigo-200 dark:border-indigo-800">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg">
+                        {(() => {
+                          const sp = isgSpecialists.find(p => p.id === formData.isgSpecialistId);
+                          return sp ? `${sp.firstName[0]}${sp.lastName[0]}` : '??';
+                        })()}
+                      </div>
+                      <div className="flex-1">
+                        {(() => {
+                          const sp = isgSpecialists.find(p => p.id === formData.isgSpecialistId);
+                          return sp ? (
+                            <>
+                              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-100">{sp.firstName} {sp.lastName}</p>
+                              <p className="text-xs text-indigo-700 dark:text-indigo-300">{sp.role}{sp.class ? ` — ${sp.class} Sınıfı` : ''}</p>
+                              <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">{sp.phone} • {sp.email}</p>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <Shield className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                    <p className="text-xs text-slate-500">İSG Uzmanı seçilmedi</p>
+                  </div>
+                )}
+
+                {isgSpecialists.length === 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                      Sistemde kayıtlı İSG Uzmanı bulunmuyor. Önce personel olarak ekleyin.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* İşyeri Hekimi Seçimi */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                <Heart className="h-3.5 w-3.5" />
+                İşyeri Hekimi
+              </h3>
+              <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Heart className="h-3.5 w-3.5" />
+                    İşyeri Hekimi Seçiniz
+                  </label>
+                  <select
+                    className={selectClass}
+                    value={formData.workplaceDoctorId || ''}
+                    onChange={e => setFormData(p => ({ ...p, workplaceDoctorId: e.target.value || undefined }))}
+                  >
+                    <option value="">İşyeri Hekimi Seçiniz (Opsiyonel)</option>
+                    {workplaceDoctors.map(p => (
+                      <option key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.role}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.workplaceDoctorId ? (
+                  <div className="bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 rounded-xl p-4 border border-rose-200 dark:border-rose-800">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg">
+                        {(() => {
+                          const doc = workplaceDoctors.find(p => p.id === formData.workplaceDoctorId);
+                          return doc ? `${doc.firstName[0]}${doc.lastName[0]}` : '??';
+                        })()}
+                      </div>
+                      <div className="flex-1">
+                        {(() => {
+                          const doc = workplaceDoctors.find(p => p.id === formData.workplaceDoctorId);
+                          return doc ? (
+                            <>
+                              <p className="text-sm font-bold text-rose-900 dark:text-rose-100">{doc.firstName} {doc.lastName}</p>
+                              <p className="text-xs text-rose-700 dark:text-rose-300">{doc.role}</p>
+                              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{doc.phone} • {doc.email}</p>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                    <Heart className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                    <p className="text-xs text-slate-500">İşyeri Hekimi seçilmedi</p>
+                  </div>
+                )}
+
+                {workplaceDoctors.length === 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                      <Info className="h-3.5 w-3.5 shrink-0" />
+                      Sistemde kayıtlı İşyeri Hekimi bulunmuyor. Önce personel olarak ekleyin.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bilgi notu */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800 dark:text-blue-200">
+                  <p className="font-semibold mb-1">Bilgi</p>
+                  <p className="text-blue-700 dark:text-blue-300">İSG Uzmanı ve İşyeri Hekimi atamaları zorunlu değildir. Daha sonra firma detay sayfasından da atama yapabilirsiniz. Atama yapılırsa ilgili personel otomatik olarak bu firmaya atanacaktır.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -638,7 +830,7 @@ export const NewCompanyWizard = () => {
           </div>
 
           {/* Fixed Navigation Buttons */}
-          <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 lg:px-6 py-3">
+          <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-4 lg:px-6 py-3 wizard-nav-buttons">
             <div className="max-w-4xl mx-auto w-full flex justify-between items-center gap-3">
               <Button
                 variant="ghost"

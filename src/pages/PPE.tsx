@@ -22,7 +22,7 @@ export const PPEPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPPE, setCurrentPPE] = useState<Partial<PPE>>({});
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 1024 ? 'grid' : 'list');
   const [selectedPPEs, setSelectedPPEs] = useState<Set<string>>(new Set());
   const [detailPPEId, setDetailPPEId] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -421,7 +421,7 @@ export const PPEPage = () => {
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="hidden lg:grid lg:grid-cols-5 gap-4">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">

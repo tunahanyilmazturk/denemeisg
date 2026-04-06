@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Company, Personnel, Incident, Training, PPE, Risk, Sector, JobDefinition, EquipmentDefinition, LocationDefinition, IncidentReasonDefinition } from '../types';
+import { Company, Personnel, Incident, Training, PPE, Risk, Sector, JobDefinition, EquipmentDefinition, LocationDefinition, IncidentReasonDefinition, Certificate } from '../types';
 import { mockSectors, mockJobDefinitions, mockEquipmentDefinitions, mockLocationDefinitions, mockIncidentReasonDefinitions } from './mockData';
 
 export type Theme = 'light' | 'dark' | 'system';
@@ -12,6 +12,20 @@ export interface UserProfile {
   phone: string;
   role: string;
   avatar?: string;
+  stampImage?: string; // base64 kaşe/imza görseli
+  stampTitle?: string; // Unvan (İSG Uzmanı, İşyeri Hekimi vs.)
+}
+
+export interface OSGBCompanySettings {
+  companyName: string;
+  companyTitle: string; // Ticari ünvan
+  logo?: string; // base64 logo
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  taxNumber?: string;
+  registrationNumber?: string; // OSGB tescil numarası
 }
 
 export interface NotificationSettings {
@@ -34,22 +48,11 @@ export interface SystemSettings {
 }
 
 export type FontSize = 'small' | 'medium' | 'large';
-export type CardStyle = 'rounded' | 'sharp' | 'pill';
 export type ColorAccent = 'indigo' | 'blue' | 'emerald' | 'rose' | 'amber' | 'violet' | 'cyan' | 'orange';
-export type SidebarStyle = 'full' | 'compact' | 'icons';
-export type TableDensity = 'comfortable' | 'compact' | 'spacious';
 
 export interface AppearanceSettings {
   fontSize: FontSize;
-  cardStyle: CardStyle;
   colorAccent: ColorAccent;
-  sidebarStyle: SidebarStyle;
-  tableDensity: TableDensity;
-  animationsEnabled: boolean;
-  showBreadcrumbs: boolean;
-  transparentSidebar: boolean;
-  compactHeader: boolean;
-  showStatsCards: boolean;
 }
 
 interface AppState {
@@ -66,13 +69,19 @@ interface AppState {
   notificationSettings: NotificationSettings;
   appearanceSettings: AppearanceSettings;
   userProfile: UserProfile;
+  osgbCompanySettings: OSGBCompanySettings;
   updateSystemSettings: (settings: Partial<SystemSettings>) => void;
   updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   updateAppearanceSettings: (settings: Partial<AppearanceSettings>) => void;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
+  updateOSGBCompanySettings: (settings: Partial<OSGBCompanySettings>) => void;
   // Sidebar
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  // Mobile
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
   // ...existing actions
   addCompany: (company: Company) => void;
   updateCompany: (company: Company) => void;
@@ -92,6 +101,11 @@ interface AppState {
   addRisk: (risk: Risk) => void;
   updateRisk: (risk: Risk) => void;
   deleteRisk: (id: string) => void;
+  // Certificates
+  certificates: Certificate[];
+  addCertificate: (certificate: Certificate) => void;
+  updateCertificate: (certificate: Certificate) => void;
+  deleteCertificate: (id: string) => void;
   // Advanced Definitions
   sectors: Sector[];
   jobDefinitions: JobDefinition[];
@@ -224,6 +238,7 @@ export const useStore = create<AppState>()(
       trainings: mockTrainings,
       ppes: [],
       risks: [],
+      certificates: [],
       // Advanced Definitions
       sectors: mockSectors,
       jobDefinitions: mockJobDefinitions,
@@ -260,21 +275,24 @@ export const useStore = create<AppState>()(
       },
       appearanceSettings: {
         fontSize: 'medium',
-        cardStyle: 'rounded',
         colorAccent: 'indigo',
-        sidebarStyle: 'full',
-        tableDensity: 'comfortable',
-        animationsEnabled: true,
-        showBreadcrumbs: true,
-        transparentSidebar: false,
-        compactHeader: false,
-        showStatsCards: true,
       },
       userProfile: {
         name: 'Yönetici',
         email: 'admin@hantech.com',
         phone: '0532 123 45 67',
         role: 'İSG Yöneticisi',
+      },
+      osgbCompanySettings: {
+        companyName: '',
+        companyTitle: '',
+        logo: undefined,
+        address: '',
+        phone: '',
+        email: '',
+        website: '',
+        taxNumber: '',
+        registrationNumber: '',
       },
       updateSystemSettings: (settings) => set((state) => {
         const newSettings = { ...state.systemSettings, ...settings };
@@ -305,8 +323,14 @@ export const useStore = create<AppState>()(
       updateUserProfile: (profile) => set((state) => ({
         userProfile: { ...state.userProfile, ...profile },
       })),
+      updateOSGBCompanySettings: (settings) => set((state) => ({
+        osgbCompanySettings: { ...state.osgbCompanySettings, ...settings },
+      })),
       sidebarCollapsed: false,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      mobileSidebarOpen: false,
+      setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
+      toggleMobileSidebar: () => set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
       addCompany: (company) => set((state) => ({ companies: [...state.companies, company] })),
       updateCompany: (company) => set((state) => ({
         companies: state.companies.map((c) => (c.id === company.id ? company : c)),
@@ -348,6 +372,14 @@ export const useStore = create<AppState>()(
       })),
       deleteRisk: (id) => set((state) => ({
         risks: state.risks.filter((r) => r.id !== id),
+      })),
+      // Certificate CRUD
+      addCertificate: (certificate) => set((state) => ({ certificates: [...state.certificates, certificate] })),
+      updateCertificate: (certificate) => set((state) => ({
+        certificates: state.certificates.map((c) => (c.id === certificate.id ? certificate : c)),
+      })),
+      deleteCertificate: (id) => set((state) => ({
+        certificates: state.certificates.filter((c) => c.id !== id),
       })),
       // Sector CRUD
       addSector: (sector) => set((state) => ({ sectors: [...state.sectors, sector] })),
@@ -411,6 +443,7 @@ export const useStore = create<AppState>()(
         notificationSettings: state.notificationSettings,
         appearanceSettings: state.appearanceSettings,
         userProfile: state.userProfile,
+        osgbCompanySettings: state.osgbCompanySettings,
         sidebarCollapsed: state.sidebarCollapsed,
         sectors: state.sectors,
         jobDefinitions: state.jobDefinitions,
