@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageTransition } from '../components/layout/PageTransition';
@@ -94,6 +95,7 @@ const getStatusColor = (status: TrainingStatus) => {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export const NewTrainingWizard = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { addTraining, personnel, companies } = useStore();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -180,6 +182,7 @@ export const NewTrainingWizard = () => {
       participants: formData.participants || [],
       status: formData.status!,
       description: formData.description,
+      createdBy: user?.id,
       createdAt: new Date().toISOString(),
     };
 

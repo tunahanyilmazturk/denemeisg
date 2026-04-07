@@ -403,6 +403,7 @@ export const NewCertificateWizard = () => {
       duration: formData.duration,
       score: formData.score,
       notes: formData.notes,
+      createdBy: user?.id,
       createdAt: new Date().toISOString(),
     };
 

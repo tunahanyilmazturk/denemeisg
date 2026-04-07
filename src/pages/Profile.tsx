@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Save, Upload, Stamp, X, Info, Check, User, Shield, Key, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -18,12 +17,36 @@ const profileTabs: { id: ProfileTab; label: string; icon: React.ElementType }[] 
 ];
 
 export const ProfilePage = () => {
-  const { userProfile, updateUserProfile } = useStore();
-  const { user } = useAuthStore();
+  const { user, updateUser, changePassword: authChangePassword } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ProfileTab>('info');
 
-  // Profile form
-  const [profileForm, setProfileForm] = useState(userProfile);
+  // Profile form - initialize from auth store user
+  const [profileForm, setProfileForm] = useState({
+    name: user ? `${user.firstName} ${user.lastName}` : '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    role: user ? (user.role.charAt(0).toUpperCase() + user.role.slice(1).replace(/_/g, ' ')) : '',
+    stampImage: undefined as string | undefined,
+    stampTitle: undefined as string | undefined,
+  });
+
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: `${user.firstName} ${user.lastName}`,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone || '',
+        role: user.role.charAt(0).toUpperCase() + user.role.slice(1).replace(/_/g, ' '),
+        stampImage: undefined,
+        stampTitle: undefined,
+      });
+    }
+  }, [user]);
 
   // Security form
   const [securityForm, setSecurityForm] = useState({
@@ -34,8 +57,15 @@ export const ProfilePage = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile(profileForm);
-    toast.success('Profil bilgileri güncellendi.');
+    if (!user) return;
+    
+    // Update auth store user
+    updateUser({
+      firstName: profileForm.firstName,
+      lastName: profileForm.lastName,
+      email: profileForm.email,
+      phone: profileForm.phone,
+    });
   };
 
   const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,7 +83,7 @@ export const ProfilePage = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (securityForm.newPassword !== securityForm.confirmPassword) {
       toast.error('Yeni şifreler eşleşmiyor.');
@@ -63,8 +93,12 @@ export const ProfilePage = () => {
       toast.error('Şifre en az 6 karakter olmalıdır.');
       return;
     }
-    toast.success('Şifre başarıyla değiştirildi.');
-    setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    try {
+      await authChangePassword(securityForm.currentPassword, securityForm.newPassword);
+      setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      // Error is handled by the store
+    }
   };
 
   return (
@@ -133,20 +167,27 @@ export const ProfilePage = () => {
                       {/* Avatar */}
                       <div className="flex items-center gap-5">
                         <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg flex-shrink-0">
-                          {profileForm.name.charAt(0).toUpperCase()}
+                          {profileForm.firstName.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 dark:text-white truncate">{profileForm.name}</p>
+                          <p className="font-semibold text-slate-900 dark:text-white truncate">{profileForm.firstName} {profileForm.lastName}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">{profileForm.role}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Ad Soyad</label>
+                          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Ad</label>
                           <Input
-                            value={profileForm.name}
-                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                            value={profileForm.firstName}
+                            onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Soyad</label>
+                          <Input
+                            value={profileForm.lastName}
+                            onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
                           />
                         </div>
                         <div className="space-y-2">
@@ -164,12 +205,14 @@ export const ProfilePage = () => {
                             onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 sm:col-span-2">
                           <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Görev/Ünvan</label>
                           <Input
                             value={profileForm.role}
-                            onChange={(e) => setProfileForm({ ...profileForm, role: e.target.value })}
+                            disabled
+                            className="bg-slate-50 dark:bg-slate-800 cursor-not-allowed"
                           />
+                          <p className="text-xs text-slate-400">Rol değişikliği için yöneticinizle iletişime geçin.</p>
                         </div>
                       </div>
 
@@ -304,6 +347,7 @@ export const ProfilePage = () => {
                             type="password"
                             value={securityForm.currentPassword}
                             onChange={(e) => setSecurityForm({ ...securityForm, currentPassword: e.target.value })}
+                            required
                           />
                         </div>
                         <div className="space-y-2">
@@ -312,6 +356,7 @@ export const ProfilePage = () => {
                             type="password"
                             value={securityForm.newPassword}
                             onChange={(e) => setSecurityForm({ ...securityForm, newPassword: e.target.value })}
+                            required
                           />
                         </div>
                         <div className="space-y-2">
@@ -320,6 +365,7 @@ export const ProfilePage = () => {
                             type="password"
                             value={securityForm.confirmPassword}
                             onChange={(e) => setSecurityForm({ ...securityForm, confirmPassword: e.target.value })}
+                            required
                           />
                         </div>
                         <Button type="submit" variant="secondary" className="gap-2">

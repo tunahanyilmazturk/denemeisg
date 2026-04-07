@@ -1,22 +1,24 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { DataTable } from '../components/ui/DataTable';
 import { useDataTable } from '../hooks/useDataTable';
-import { exportToPDF, exportToExcel } from '../utils/exportUtils';
 import { Plus, Download, FileText, Search, Edit2, Trash2, GraduationCap, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, Users, Clock, ChevronLeft, ChevronRight, Building2, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { Training, TrainingStatus } from '../types';
-import { exportTrainingsReport } from '../utils/exportUtils';
+import { exportToPDF, exportToExcel, exportTrainingsReport } from '../utils/exportUtils';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
+import { useUserDataFilter } from '../hooks/useUserDataFilter';
 
 type ViewMode = 'grid' | 'list';
 
 export const Trainings = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { trainings, personnel, companies, addTraining, updateTraining, deleteTraining } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTraining, setCurrentTraining] = useState<Partial<Training>>({ participants: [] });
@@ -27,6 +29,9 @@ export const Trainings = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [trainingToDelete, setTrainingToDelete] = useState<string | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+
+  // Filter trainings based on user role (admin/manager see all, others see only their own)
+  const userTrainings = useUserDataFilter(trainings);
 
   const {
     sortConfig,
@@ -41,14 +46,14 @@ export const Trainings = () => {
     pageSize,
     setPageSize,
   } = useDataTable<Training>({
-    data: trainings,
+    data: userTrainings,
     initialSort: { key: 'date', direction: 'desc' },
     initialPageSize: 10,
   });
 
   // Apply custom filters (manual filtering to avoid double-filter bug)
   const filteredTrainings = useMemo(() => {
-    let result = [...trainings];
+    let result = [...userTrainings];
 
     // Apply search
     if (searchTerm) {
@@ -75,7 +80,7 @@ export const Trainings = () => {
     }
     
     return result;
-  }, [trainings, searchTerm, filters, personnel]);
+  }, [userTrainings, searchTerm, filters, personnel]);
 
   // Pagination
   const totalItems = filteredTrainings.length;
@@ -103,6 +108,7 @@ export const Trainings = () => {
       addTraining({
         ...currentTraining,
         id: Math.random().toString(36).substr(2, 9),
+        createdBy: user?.id,
         createdAt: new Date().toISOString(),
       } as Training);
       toast.success('Eğitim başarıyla eklendi.');

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { PPE, PPEType, PPEStatus } from '../types';
-import { Plus, Search, Edit2, Trash2, Download, FileText, HardHat, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, User, ChevronLeft, ChevronRight, Package, Shield, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Download, FileText, HardHat, Filter, X, Grid3x3, List, Eye, TrendingUp, CheckSquare, Square, Calendar, User, ChevronLeft, ChevronRight, Package, Shield, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -12,12 +13,46 @@ import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { useUserDataFilter } from '../hooks/useUserDataFilter';
 
 type ViewMode = 'grid' | 'list';
 
 const ppeTypes: PPEType[] = ['Baret', 'İş Ayakkabısı', 'Eldiven', 'Gözlük', 'Reflektörlü Yelek', 'Kulaklık', 'Emniyet Kemeri', 'Diğer'];
 
+// Helper function to determine PPE expiry status
+const getPPEExpiryStatus = (expiryDate?: string): 'expired' | 'expiring-soon' | 'valid' => {
+  if (!expiryDate) return 'valid';
+  
+  const expiry = new Date(expiryDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const diffTime = expiry.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return 'expired';
+  if (diffDays <= 30) return 'expiring-soon';
+  return 'valid';
+};
+
+// Helper function to format days remaining
+const getExpiryDaysText = (expiryDate?: string): string => {
+  if (!expiryDate) return 'Tarih Yok';
+  
+  const expiry = new Date(expiryDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const diffTime = expiry.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return `${Math.abs(diffDays)} gün geçmiş`;
+  if (diffDays === 0) return 'Bugün sona eriyor';
+  return `${diffDays} gün kaldı`;
+};
+
 export const PPEPage = () => {
+  const { user } = useAuthStore();
   const { ppes, personnel, addPPE, updatePPE, deletePPE } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPPE, setCurrentPPE] = useState<Partial<PPE>>({});
@@ -28,6 +63,9 @@ export const PPEPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [ppeToDelete, setPPEToDelete] = useState<string | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+
+  // Filter PPEs based on user role (admin/manager see all, others see only their own)
+  const userPPEs = useUserDataFilter(ppes);
 
   const {
     sortConfig,
@@ -42,14 +80,14 @@ export const PPEPage = () => {
     pageSize,
     setPageSize,
   } = useDataTable<PPE>({
-    data: ppes,
+    data: userPPEs,
     initialSort: { key: 'issueDate', direction: 'desc' },
     initialPageSize: 10,
   });
 
   // Manual filtering on raw data to avoid double-filter bug
   const filteredPPEs = useMemo(() => {
-    let result = [...ppes];
+    let result = [...userPPEs];
 
     // Search
     if (searchTerm) {
@@ -81,6 +119,14 @@ export const PPEPage = () => {
       result = result.filter(p => p.personnelId === filters.personnelId);
     }
 
+    // Expiry status filter
+    if (filters.expiryStatus && filters.expiryStatus !== 'all') {
+      result = result.filter(p => {
+        const status = getPPEExpiryStatus(p.expiryDate);
+        return status === filters.expiryStatus;
+      });
+    }
+
     // Sorting
     if (sortConfig.key) {
       result.sort((a, b) => {
@@ -102,7 +148,7 @@ export const PPEPage = () => {
     }
 
     return result;
-  }, [ppes, searchTerm, filters.status, filters.type, filters.personnelId, sortConfig, personnel]);
+  }, [userPPEs, searchTerm, filters.status, filters.type, filters.personnelId, filters.expiryStatus, sortConfig, personnel]);
 
   // Manual pagination
   const totalItems = filteredPPEs.length;
@@ -123,12 +169,18 @@ export const PPEPage = () => {
     }, 0);
     const avgDays = activePPEs.length > 0 ? Math.round(totalDays / activePPEs.length) : 0;
 
+    // Expiry statistics
+    const expiredCount = ppes.filter(p => getPPEExpiryStatus(p.expiryDate) === 'expired').length;
+    const expiringSoonCount = ppes.filter(p => getPPEExpiryStatus(p.expiryDate) === 'expiring-soon').length;
+
     return {
       total: ppes.length,
       active: ppes.filter(p => p.status === 'Aktif').length,
       returned: ppes.filter(p => p.status === 'İade Edildi').length,
       lost: ppes.filter(p => p.status === 'Yıprandı/Kayıp').length,
       avgDays,
+      expiredCount,
+      expiringSoonCount,
     };
   }, [ppes]);
 
@@ -141,6 +193,7 @@ export const PPEPage = () => {
       addPPE({
         ...currentPPE,
         id: Date.now().toString(),
+        createdBy: user?.id,
       } as PPE);
       toast.success('Yeni KKD kaydı eklendi.');
     }
@@ -216,12 +269,13 @@ export const PPEPage = () => {
         p.name,
         person ? `${person.firstName} ${person.lastName}` : 'Bilinmiyor',
         new Date(p.issueDate).toLocaleDateString('tr-TR'),
+        p.expiryDate ? new Date(p.expiryDate).toLocaleDateString('tr-TR') : '-',
         p.status
       ];
     });
 
     (doc as any).autoTable({
-      head: [['Tip', 'Ekipman', 'Personel', 'Veriliş Tarihi', 'Durum']],
+      head: [['Tip', 'Ekipman', 'Personel', 'Veriliş Tarihi', 'Son Kullanma', 'Durum']],
       body: tableData,
       startY: 20,
     });
@@ -238,6 +292,8 @@ export const PPEPage = () => {
         'Ekipman': p.name,
         'Personel': person ? `${person.firstName} ${person.lastName}` : 'Bilinmiyor',
         'Veriliş Tarihi': new Date(p.issueDate).toLocaleDateString('tr-TR'),
+        'Son Kullanma Tarihi': p.expiryDate ? new Date(p.expiryDate).toLocaleDateString('tr-TR') : '',
+        'Bakım Tarihi': p.maintenanceDate ? new Date(p.maintenanceDate).toLocaleDateString('tr-TR') : '',
         'Durum': p.status,
         'Notlar': p.notes || ''
       };
@@ -375,6 +431,45 @@ export const PPEPage = () => {
       ),
     },
     {
+      key: 'expiryDate',
+      header: 'Son Kullanma',
+      width: '160px',
+      render: (p: PPE) => {
+        const expiryStatus = getPPEExpiryStatus(p.expiryDate);
+        const expiryText = getExpiryDaysText(p.expiryDate);
+        
+        let bgColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+        let iconColor = 'text-slate-400';
+        
+        if (expiryStatus === 'expired') {
+          bgColor = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+          iconColor = 'text-red-500';
+        } else if (expiryStatus === 'expiring-soon') {
+          bgColor = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+          iconColor = 'text-amber-500';
+        } else if (expiryStatus === 'valid') {
+          bgColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+          iconColor = 'text-emerald-500';
+        }
+        
+        return (
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${bgColor}`}>
+            {expiryStatus === 'expired' ? (
+              <AlertCircle className={`h-3.5 w-3.5 ${iconColor}`} />
+            ) : (
+              <Clock className={`h-3.5 w-3.5 ${iconColor}`} />
+            )}
+            <div className="flex flex-col">
+              {p.expiryDate && (
+                <span>{new Date(p.expiryDate).toLocaleDateString('tr-TR')}</span>
+              )}
+              <span className="text-xs opacity-75">{expiryText}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: 'actions',
       header: 'İşlemler',
       width: '140px',
@@ -415,13 +510,13 @@ export const PPEPage = () => {
     },
   ];
 
-  const hasActiveFilters = searchTerm || filters.status || filters.type || filters.personnelId;
+  const hasActiveFilters = searchTerm || filters.status || filters.type || filters.personnelId || filters.expiryStatus;
 
   return (
     <PageTransition>
       <div className="space-y-4">
         {/* Stats Cards */}
-        <div className="hidden lg:grid lg:grid-cols-5 gap-4">
+        <div className="hidden lg:grid lg:grid-cols-7 gap-4">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -475,7 +570,73 @@ export const PPEPage = () => {
             <p className="text-2xl font-bold mb-1">{stats.avgDays}</p>
             <p className="text-sm text-white/80">Ort. Kullanım (Gün)</p>
           </div>
+
+          <div className="bg-gradient-to-br from-red-600 to-pink-700 rounded-2xl p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <TrendingUp className="h-5 w-5 opacity-70" />
+            </div>
+            <p className="text-2xl font-bold mb-1">{stats.expiredCount}</p>
+            <p className="text-sm text-white/80">Süresi Geçmiş</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl p-5 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Clock className="h-6 w-6" />
+              </div>
+              <TrendingUp className="h-5 w-5 opacity-70" />
+            </div>
+            <p className="text-2xl font-bold mb-1">{stats.expiringSoonCount}</p>
+            <p className="text-sm text-white/80">Sona Yaklaşan</p>
+          </div>
         </div>
+
+        {/* Expiry Alert Banners */}
+        {stats.expiredCount > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800">
+            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-red-700 dark:text-red-300">
+                {stats.expiredCount} KKD kaydının son kullanma tarihi geçmiş
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">
+                Süresi dolmuş KKD'leri kontrol edin ve yenileyin.
+              </p>
+            </div>
+            <button
+              onClick={() => { setFilter('expiryStatus', 'expired'); setCurrentPage(1); setShowFilters(true); }}
+              className="text-sm font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline whitespace-nowrap"
+            >
+              Listele →
+            </button>
+          </div>
+        )}
+        {stats.expiringSoonCount > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-amber-700 dark:text-amber-300">
+                {stats.expiringSoonCount} KKD kaydı 30 gün içinde sona eriyor
+              </p>
+              <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
+                Yakında sona erecek KKD'leri önceden yenilemeyi unutmayın.
+              </p>
+            </div>
+            <button
+              onClick={() => { setFilter('expiryStatus', 'expiring-soon'); setCurrentPage(1); setShowFilters(true); }}
+              className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 underline whitespace-nowrap"
+            >
+              Listele →
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -561,7 +722,7 @@ export const PPEPage = () => {
 
           {/* Filter Options */}
           {showFilters && (
-            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <HardHat className="h-3.5 w-3.5" /> Ekipman Tipi
@@ -607,6 +768,21 @@ export const PPEPage = () => {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" /> Son Kullanma Durumu
+                </label>
+                <select
+                  value={filters.expiryStatus || 'all'}
+                  onChange={(e) => { setFilter('expiryStatus', e.target.value === 'all' ? '' : e.target.value); setCurrentPage(1); }}
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="all">Tüm Tarihler</option>
+                  <option value="expired">Süresi Geçmiş</option>
+                  <option value="expiring-soon">Sona Yaklaşan (30 gün)</option>
+                  <option value="valid">Geçerli</option>
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -627,12 +803,7 @@ export const PPEPage = () => {
             startIndex={startIndex}
             endIndex={endIndex}
             keyExtractor={(p) => p.id}
-            emptyMessage={
-              <div className="flex flex-col items-center justify-center py-8">
-                <HardHat className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-3" />
-                <p className="text-slate-500 dark:text-slate-400">KKD kaydı bulunamadı.</p>
-              </div>
-            }
+            emptyMessage="KKD kaydı bulunamadı."
           />
         ) : (
           <div className="space-y-4">
@@ -696,6 +867,21 @@ export const PPEPage = () => {
                           <Calendar className="h-4 w-4 text-slate-400" />
                           <span>{new Date(ppe.issueDate).toLocaleDateString('tr-TR')}</span>
                         </div>
+                        {ppe.expiryDate && (
+                          <div className={`flex items-center gap-2 text-xs font-medium px-2.5 py-1.5 rounded-lg ${
+                            getPPEExpiryStatus(ppe.expiryDate) === 'expired'
+                              ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                              : getPPEExpiryStatus(ppe.expiryDate) === 'expiring-soon'
+                                ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                          }`}>
+                            {getPPEExpiryStatus(ppe.expiryDate) === 'expired'
+                              ? <AlertCircle className="h-3.5 w-3.5" />
+                              : <Clock className="h-3.5 w-3.5" />
+                            }
+                            <span>{getExpiryDaysText(ppe.expiryDate)}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -842,7 +1028,7 @@ export const PPEPage = () => {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Durum</label>
-                <select 
+                <select
                   required
                   className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                   value={currentPPE.status || 'Aktif'}
@@ -855,9 +1041,28 @@ export const PPEPage = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-slate-400" />
+                  Son Kullanma Tarihi (Opsiyonel)
+                </label>
+                <Input type="date" value={currentPPE.expiryDate || ''} onChange={e => setCurrentPPE({...currentPPE, expiryDate: e.target.value})} />
+                <p className="text-xs text-slate-500">Kullanım ömrü dolunca uyarı gösterilir</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                  Bakım Tarihi (Opsiyonel)
+                </label>
+                <Input type="date" value={currentPPE.maintenanceDate || ''} onChange={e => setCurrentPPE({...currentPPE, maintenanceDate: e.target.value})} />
+                <p className="text-xs text-slate-500">Periyodik bakım/kontrol tarihi</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Notlar (Opsiyonel)</label>
-              <textarea 
+              <textarea
                 className="flex min-h-[80px] w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 value={currentPPE.notes || ''}
                 onChange={e => setCurrentPPE({...currentPPE, notes: e.target.value})}
@@ -888,12 +1093,60 @@ export const PPEPage = () => {
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{detailPPE.name}</h2>
                   <p className="text-slate-600 dark:text-slate-400 mb-2">{detailPPE.type}</p>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium ${getStatusColor(detailPPE.status)}`}>
-                    <span className={`w-2 h-2 rounded-full ${getStatusDotColor(detailPPE.status)}`} />
-                    {detailPPE.status}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium ${getStatusColor(detailPPE.status)}`}>
+                      <span className={`w-2 h-2 rounded-full ${getStatusDotColor(detailPPE.status)}`} />
+                      {detailPPE.status}
+                    </span>
+                    {detailPPE.expiryDate && (() => {
+                      const expStatus = getPPEExpiryStatus(detailPPE.expiryDate);
+                      if (expStatus === 'expired') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            <AlertCircle className="h-4 w-4" /> Süresi Geçmiş
+                          </span>
+                        );
+                      }
+                      if (expStatus === 'expiring-soon') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            <Clock className="h-4 w-4" /> {getExpiryDaysText(detailPPE.expiryDate)}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          <Clock className="h-4 w-4" /> {getExpiryDaysText(detailPPE.expiryDate)}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
+
+              {/* Expiry Alert Banner */}
+              {detailPPE.expiryDate && getPPEExpiryStatus(detailPPE.expiryDate) === 'expired' && (
+                <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium text-red-700 dark:text-red-300">Son Kullanma Tarihi Geçmiş</p>
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">
+                      Bu KKD'nin son kullanma tarihi {new Date(detailPPE.expiryDate).toLocaleDateString('tr-TR')} tarihinde dolmuştur. Lütfen yenileyin.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {detailPPE.expiryDate && getPPEExpiryStatus(detailPPE.expiryDate) === 'expiring-soon' && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium text-amber-700 dark:text-amber-300">Son Kullanma Tarihi Yaklaşıyor</p>
+                    <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
+                      Bu KKD {getExpiryDaysText(detailPPE.expiryDate)} sona erecek ({new Date(detailPPE.expiryDate).toLocaleDateString('tr-TR')}).
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -920,6 +1173,49 @@ export const PPEPage = () => {
                         </p>
                       </div>
                     </div>
+                    {detailPPE.expiryDate && (
+                      <div className="flex items-start gap-3">
+                        <Clock className={`h-5 w-5 mt-0.5 ${
+                          getPPEExpiryStatus(detailPPE.expiryDate) === 'expired'
+                            ? 'text-red-500'
+                            : getPPEExpiryStatus(detailPPE.expiryDate) === 'expiring-soon'
+                              ? 'text-amber-500'
+                              : 'text-emerald-500'
+                        }`} />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Son Kullanma Tarihi</p>
+                          <p className={`font-semibold ${
+                            getPPEExpiryStatus(detailPPE.expiryDate) === 'expired'
+                              ? 'text-red-600 dark:text-red-400'
+                              : getPPEExpiryStatus(detailPPE.expiryDate) === 'expiring-soon'
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-emerald-600 dark:text-emerald-400'
+                          }`}>
+                            {new Date(detailPPE.expiryDate).toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{getExpiryDaysText(detailPPE.expiryDate)}</p>
+                        </div>
+                      </div>
+                    )}
+                    {detailPPE.maintenanceDate && (
+                      <div className="flex items-start gap-3">
+                        <Calendar className="h-5 w-5 text-blue-500 mt-0.5" />
+                        <div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Bakım Tarihi</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {new Date(detailPPE.maintenanceDate).toLocaleDateString('tr-TR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

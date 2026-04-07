@@ -98,7 +98,7 @@ export const Header = () => {
 
   return (
     <header className="h-14 sm:h-16 bg-white/40 dark:bg-[#09090b]/40 backdrop-blur-2xl border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between px-3 sm:px-6 transition-all duration-200 sticky top-0 z-30">
-      {/* Left Section - Mobile Menu + Page Title & Search */}
+      {/* Left Section - Mobile Menu + Logo + Page Title & Search */}
       <div className="flex items-center gap-2 sm:gap-4 flex-1">
         {/* Mobile Menu Button */}
         <button
@@ -108,6 +108,17 @@ export const Header = () => {
         >
           <Menu className="h-5 w-5" />
         </button>
+
+        {/* Logo - Desktop */}
+        <div className="hidden lg:flex items-center gap-2">
+          <div className="relative w-8 h-8">
+            <img
+              src={isDarkMode ? '/logo/logodark.png' : '/logo/logo.png'}
+              alt="HanTech Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
 
         {/* Page Title - Hidden on mobile */}
         <div className="hidden lg:block">

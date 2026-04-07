@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -148,7 +148,12 @@ export const PersonnelDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { personnel, companies, updatePersonnel, deletePersonnel, incidents, trainings, ppes: ppeList } = useStore();
-  const { systemUsers, resetUserPassword, toggleUserStatus, deleteSystemUser, hasRole } = useAuthStore();
+  const { systemUsers, resetUserPassword, toggleUserStatus, deleteSystemUser, hasRole, loadSystemUsers } = useAuthStore();
+
+  // Load system users on mount to properly link personnel to user accounts
+  useEffect(() => {
+    loadSystemUsers();
+  }, [loadSystemUsers]);
 
   // Permission check
   const canEdit = hasRole(['superadmin', 'admin', 'mudur']);
@@ -291,7 +296,7 @@ export const PersonnelDetail = () => {
   const handleToggleUserStatus = async () => {
     if (!linkedUser) return;
     await toggleUserStatus(linkedUser.id);
-    toast.success(linkedUser.isActive ? 'Kullanıcı hesabı pasifleştirildi.' : 'Kullanıcı hesabı aktifleştirildi.');
+    toast.success(linkedUser.isEmailVerified ? 'Kullanıcı hesabı pasifleştirildi.' : 'Kullanıcı hesabı aktifleştirildi.');
   };
 
   const handleDeleteUser = async () => {
@@ -1117,11 +1122,11 @@ export const PersonnelDetail = () => {
                       <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Durum</p>
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                          linkedUser.isActive
+                          linkedUser.isEmailVerified
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                             : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
-                          {linkedUser.isActive ? 'Aktif' : 'Pasif'}
+                          {linkedUser.isEmailVerified ? 'Aktif' : 'Pasif'}
                         </span>
                       </div>
                     </div>
@@ -1132,7 +1137,7 @@ export const PersonnelDetail = () => {
                       <Key className="h-4 w-4" /> Şifre Sıfırla
                     </Button>
                     <Button variant="secondary" onClick={handleToggleUserStatus} className="gap-2">
-                      {linkedUser.isActive ? (
+                      {linkedUser.isEmailVerified ? (
                         <><Lock className="h-4 w-4" /> Hesabı Pasifleştir</>
                       ) : (
                         <><Unlock className="h-4 w-4" /> Hesabı Aktifleştir</>
@@ -1236,11 +1241,11 @@ export const PersonnelDetail = () => {
                     <Key className="h-4 w-4 text-slate-500" />
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Sistem Hesabı</span>
                     <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${
-                      linkedUser.isActive
+                      linkedUser.isEmailVerified
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                     }`}>
-                      {linkedUser.isActive ? 'Aktif' : 'Pasif'}
+                      {linkedUser.isEmailVerified ? 'Aktif' : 'Pasif'}
                     </span>
                   </div>
                 </div>

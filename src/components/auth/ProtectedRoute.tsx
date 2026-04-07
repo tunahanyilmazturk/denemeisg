@@ -22,7 +22,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles,
   requiredPermission,
 }) => {
-  const { isAuthenticated, user, hasPermission, hasRole } = useAuthStore();
+  const { isAuthenticated, hasPermission, hasRole } = useAuthStore();
   const location = useLocation();
 
   // Not authenticated - redirect to login

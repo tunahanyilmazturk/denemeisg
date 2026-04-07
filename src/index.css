@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -14,12 +14,14 @@
   --accent-s: 84%;
   --accent-l: 67%;
   --base-font-size: 14px;
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased transition-colors duration-300;
+  @apply bg-slate-50 text-slate-900 antialiased;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   font-size: var(--base-font-size);
+  transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out;
 }
 
 .dark body {
@@ -27,7 +29,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  @apply font-display tracking-tight;
+  @apply font-display tracking-tight font-bold;
 }
 
 /* ─── ACCENT COLOR SYSTEM ─── */
@@ -88,10 +90,46 @@ h1, h2, h3, h4, h5, h6 {
   --tw-ring-color: hsl(var(--accent-h), var(--accent-s), 78%) !important;
 }
 
-/* Custom Scrollbar for a more premium feel */
+/* ─── SIDEBAR STYLES ─── */
+
+/* Sidebar accent bar animation */
+.sidebar-accent-bar {
+  transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth sidebar width transition */
+.sidebar-root {
+  will-change: width;
+}
+
+/* Nav item hover: subtle lift */
+.sidebar-nav-item {
+  position: relative;
+  will-change: transform;
+}
+
+.sidebar-nav-item:hover:not(.active) {
+  transform: translateX(1px);
+}
+
+/* Nav item active: no transform */
+.sidebar-nav-item[aria-current="page"] {
+  transform: none;
+}
+
+/* Sidebar scrollbar — always hide on all breakpoints */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ─── CUSTOM SCROLLBAR ─── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -99,11 +137,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300/80 rounded-full dark:bg-slate-700/80;
+  @apply bg-slate-200 rounded-full dark:bg-slate-800;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400 dark:bg-slate-600;
+  @apply bg-slate-300 dark:bg-slate-700;
 }
 
 /* ─── MOBILE OPTIMIZATIONS ─── */
@@ -126,17 +164,6 @@ button, a, nav {
 .scroll-smooth {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-}
-
-/* Hide scrollbar on mobile for cleaner look */
-@media (max-width: 1023px) {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 /* Touch-friendly button sizes (minimum 44px touch target) */

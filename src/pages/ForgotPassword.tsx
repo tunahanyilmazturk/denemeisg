@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
-import { validateEmail } from '../utils/passwordStrength';
+import { validateEmail } from '../utils/helpers';
 import { cn } from '../components/ui/Button';
 
 export const ForgotPasswordPage = () => {
@@ -180,7 +180,7 @@ export const ForgotPasswordPage = () => {
           </div>
 
           <p className="text-center mt-6 text-xs text-slate-400 dark:text-slate-500">
-            © 2024 HanTech Teknoloji A.Ş. Tüm hakları saklıdır.
+            © 2026 HanTech Teknoloji A.Ş. Tüm hakları saklıdır.
           </p>
         </motion.div>
       </div>

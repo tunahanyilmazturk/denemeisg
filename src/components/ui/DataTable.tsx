@@ -24,7 +24,7 @@ interface DataTableProps<T> {
   totalItems?: number;
   startIndex?: number;
   endIndex?: number;
-  emptyMessage?: string;
+  emptyMessage?: string | React.ReactNode;
   keyExtractor: (item: T) => string;
   onRowClick?: (item: T) => void;
 }

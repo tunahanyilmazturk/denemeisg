@@ -6,6 +6,7 @@ export type PPEStatus = 'Aktif' | 'İade Edildi' | 'Yıprandı/Kayıp';
 export type PPEType = 'Baret' | 'İş Ayakkabısı' | 'Eldiven' | 'Gözlük' | 'Reflektörlü Yelek' | 'Kulaklık' | 'Emniyet Kemeri' | 'Diğer';
 
 export type RiskStatus = 'Açık' | 'Devam Ediyor' | 'Giderildi';
+export type RiskType = 'Fiziksel' | 'Kimyasal' | 'Biyolojik' | 'Ergonomik' | 'Psikososyal' | 'Çevresel' | 'Elektrik' | 'Diğer';
 
 export interface Company {
   id: string;
@@ -24,7 +25,8 @@ export interface Company {
 
 export type PersonnelClass = 'A' | 'B' | 'C';
 export type PersonnelStatus = 'Aktif' | 'Pasif' | 'İstifa Etti';
-export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | '0+';
+export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | '0+' | '0-';
+export type EducationLevel = 'İlkokul' | 'Ortaokul' | 'Lise' | 'Ön Lisans' | 'Lisans' | 'Yüksek Lisans' | 'Doktora' | 'Belirtilmemiş';
 
 // ISG Personel Rolleri
 export type PersonnelRole =
@@ -73,7 +75,7 @@ export interface Personnel {
   id: string;
   firstName: string;
   lastName: string;
-  tcNo: string;
+  tcNo?: string;
   role: string;
   class?: PersonnelClass;
   status?: PersonnelStatus;
@@ -89,9 +91,13 @@ export interface Personnel {
   emergencyContact?: string;
   emergencyPhone?: string;
   education?: string;
+  educationLevel?: EducationLevel;
   certifications?: string[];
   medicalExams?: MedicalExam[];
   ppeRecords?: PPERecord[];
+  healthNotes?: string;
+  healthReportBase64?: string;
+  healthReportFileName?: string;
 }
 
 export interface MedicalExam {
@@ -126,6 +132,7 @@ export interface Incident {
   date: string;
   companyId: string;
   personnelId?: string;
+  createdBy?: string; // User ID who created this record
   severity: Severity;
   status: IncidentStatus;
   location: string;
@@ -206,6 +213,7 @@ export interface Training {
   date: string;
   duration: number; // saat cinsinden
   participants: string[]; // personel ID'leri
+  createdBy?: string; // User ID who created this record
   status: TrainingStatus;
   description?: string;
   createdAt: string;
@@ -217,9 +225,15 @@ export interface PPE {
   type: PPEType;
   name: string;
   issueDate: string;
+  expiryDate?: string; // Son kullanma tarihi
+  maintenanceDate?: string; // Bakım tarihi
+  createdBy?: string; // User ID who created this record
   status: PPEStatus;
   notes?: string;
 }
+
+// PPE expiry status for warnings
+export type PPEExpiryStatus = 'expired' | 'expiring-soon' | 'valid';
 
 export interface Risk {
   id: string;
@@ -230,8 +244,16 @@ export interface Risk {
   score: number; // probability * severity
   controlMeasure: string;
   responsible: string;
+  createdBy?: string; // User ID who created this record
   status: RiskStatus;
   date: string;
+  riskType?: RiskType; // Risk kategorisi
+  location?: string; // Riski bulunduğu yer
+  lastReviewDate?: string; // Son inceleme tarihi
+  nextReviewDate?: string; // Sonraki inceleme tarihi
+  notes?: string; // Ek notlar
+  actionsTaken?: string; // Alınan aksiyonlar
+  verification?: boolean; // Doğrulama durumu
 }
 
 // Advanced Definitions System
@@ -299,6 +321,7 @@ export interface Certificate {
   certificateNo: string;
   personnelId: string;
   trainingId?: string; // Linked training if issued from a training
+  createdBy?: string; // User ID who created this record
   type: CertificateType;
   title: string;
   description?: string;

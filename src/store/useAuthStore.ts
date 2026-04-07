@@ -13,9 +13,7 @@ import {
   PasswordResetData,
   UserRole,
   SecurityLog,
-  SessionStatus,
   ROLE_PERMISSIONS,
-  Permission,
 } from '../types/auth';
 import { tokenManager, generateMockSession, parseTokenPayload } from '../utils/tokenManager';
 import toast from 'react-hot-toast';
@@ -112,6 +110,28 @@ const INITIAL_MOCK_USERS: (AuthUser & { password: string })[] = [
 ];
 
 let MOCK_USERS = [...INITIAL_MOCK_USERS];
+
+// Initialize MOCK_USERS from localStorage if available
+const initializeMockUsers = () => {
+  try {
+    const saved = localStorage.getItem('app_mock_users');
+    if (saved) {
+      MOCK_USERS = JSON.parse(saved);
+    }
+  } catch (err) {
+    console.warn('Failed to load saved users from localStorage');
+  }
+};
+
+const saveMockUsers = () => {
+  try {
+    localStorage.setItem('app_mock_users', JSON.stringify(MOCK_USERS));
+  } catch (err) {
+    console.warn('Failed to save users to localStorage');
+  }
+};
+
+initializeMockUsers();
 
 interface AuthStore extends AuthState {
   // Auth Actions
@@ -423,10 +443,11 @@ export const useAuthStore = create<AuthStore>()(
           };
 
           MOCK_USERS.push(newUser);
+          saveMockUsers();
           
           // Update system users list
           const { password, ...userWithoutPassword } = newUser;
-          set((state) => ({ 
+          set((state) => ({
             systemUsers: [...state.systemUsers, userWithoutPassword],
             isLoading: false,
           }));
@@ -456,11 +477,12 @@ export const useAuthStore = create<AuthStore>()(
             if (emailExists) throw new Error('Bu email adresi zaten kullanılıyor');
           }
 
-          MOCK_USERS[idx] = { 
-            ...MOCK_USERS[idx], 
-            ...data, 
-            updatedAt: new Date().toISOString() 
+          MOCK_USERS[idx] = {
+            ...MOCK_USERS[idx],
+            ...data,
+            updatedAt: new Date().toISOString()
           };
+          saveMockUsers();
 
           const { password, ...userWithoutPassword } = MOCK_USERS[idx];
           set((state) => ({
@@ -491,6 +513,7 @@ export const useAuthStore = create<AuthStore>()(
           if (!targetUser) throw new Error('Kullanıcı bulunamadı');
 
           MOCK_USERS = MOCK_USERS.filter(u => u.id !== id);
+          saveMockUsers();
           
           set((state) => ({
             systemUsers: state.systemUsers.filter(u => u.id !== id),
@@ -517,6 +540,7 @@ export const useAuthStore = create<AuthStore>()(
           if (idx === -1) throw new Error('Kullanıcı bulunamadı');
 
           MOCK_USERS[idx].password = newPassword;
+          saveMockUsers();
           
           set({ isLoading: false });
           get().addSecurityLog('password_change', `Admin reset password for: ${MOCK_USERS[idx].email}`);
@@ -544,6 +568,7 @@ export const useAuthStore = create<AuthStore>()(
           const isCurrentlyVerified = MOCK_USERS[idx].isEmailVerified;
           MOCK_USERS[idx].isEmailVerified = !isCurrentlyVerified;
           MOCK_USERS[idx].updatedAt = new Date().toISOString();
+          saveMockUsers();
 
           const { password, ...userWithoutPassword } = MOCK_USERS[idx];
           set((state) => ({

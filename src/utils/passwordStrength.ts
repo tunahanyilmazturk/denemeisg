@@ -101,12 +101,3 @@ export function getPasswordRules(): { rule: string; test: (pw: string) => boolea
   ];
 }
 
-export function validateEmail(email: string): boolean {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(email);
-}
-
-export function validatePhone(phone: string): boolean {
-  const phoneRegex = /^(\+90|0)?[0-9]{3}[0-9]{3}[0-9]{2}[0-9]{2}$/;
-  return phoneRegex.test(phone.replace(/\s/g, ''));
-}

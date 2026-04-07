@@ -12,6 +12,7 @@ import { Plus, Download, Search, Edit2, Trash2, Award, Filter, X, Grid3x3, List,
 import { Certificate, CertificateStatus, CertificateType } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
+import { useUserDataFilter } from '../hooks/useUserDataFilter';
 
 const CERTIFICATE_TYPES: CertificateType[] = [
   'İSG Eğitimi', 'Yangın Güvenliği', 'İlk Yardım', 'Yüksekte Çalışma',
@@ -42,6 +43,9 @@ export const Certificates = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Certificate>>({});
 
+  // Filter certificates based on user role (admin/manager see all, others see only their own)
+  const userCertificates = useUserDataFilter(certificates);
+
   const {
     sortConfig,
     handleSort,
@@ -55,20 +59,20 @@ export const Certificates = () => {
     pageSize,
     setPageSize,
   } = useDataTable<Certificate>({
-    data: certificates,
+    data: userCertificates,
     initialSort: { key: 'issueDate', direction: 'desc' },
     initialPageSize: 10,
   });
 
   // Apply custom filters
   const filteredCertificates = useMemo(() => {
-    let result = [...certificates];
+    let result = [...userCertificates];
 
     // Apply search
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      result = result.filter((c) => 
-        c.title.toLowerCase().includes(term) || 
+      result = result.filter((c) =>
+        c.title.toLowerCase().includes(term) ||
         c.certificateNo.toLowerCase().includes(term) ||
         c.type.toLowerCase().includes(term) ||
         c.issuer.toLowerCase().includes(term)
@@ -84,7 +88,7 @@ export const Certificates = () => {
     }
     
     return result;
-  }, [certificates, searchTerm, filters]);
+  }, [userCertificates, searchTerm, filters]);
 
   // Pagination
   const totalItems = filteredCertificates.length;
@@ -95,15 +99,15 @@ export const Certificates = () => {
 
   // Calculate statistics
   const stats = useMemo(() => ({
-    total: certificates.length,
-    active: certificates.filter(c => c.status === 'Aktif').length,
-    expired: certificates.filter(c => c.status === 'Süresi Dolmuş').length,
-    expiringSoon: certificates.filter(c => {
+    total: userCertificates.length,
+    active: userCertificates.filter(c => c.status === 'Aktif').length,
+    expired: userCertificates.filter(c => c.status === 'Süresi Dolmuş').length,
+    expiringSoon: userCertificates.filter(c => {
       if (!c.expiryDate || c.status !== 'Aktif') return false;
       const daysUntilExpiry = Math.floor((new Date(c.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
     }).length,
-  }), [certificates]);
+  }), [userCertificates]);
 
   const handleDelete = (id: string) => {
     setCertificateToDelete(id);

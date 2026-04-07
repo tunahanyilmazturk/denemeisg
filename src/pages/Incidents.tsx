@@ -12,6 +12,7 @@ import { Plus, Download, FileText, Search, Edit2, Trash2, AlertCircle, Filter, X
 import { Incident, Severity, IncidentStatus, IncidentType } from '../types';
 import toast from 'react-hot-toast';
 import { PageTransition } from '../components/layout/PageTransition';
+import { useUserDataFilter, useCanViewAll } from '../hooks/useUserDataFilter';
 
 type ViewMode = 'grid' | 'list';
 
@@ -31,6 +32,10 @@ export const Incidents = () => {
   const [incidentToDelete, setIncidentToDelete] = useState<string | null>(null);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
 
+  // Filter incidents based on user role (admin/manager see all, others see only their own)
+  const userIncidents = useUserDataFilter(incidents);
+  const canViewAll = useCanViewAll();
+
   const {
     sortConfig,
     handleSort,
@@ -44,14 +49,14 @@ export const Incidents = () => {
     pageSize,
     setPageSize,
   } = useDataTable<Incident>({
-    data: incidents,
+    data: userIncidents,
     initialSort: { key: 'date', direction: 'desc' },
     initialPageSize: 10,
   });
 
   // Apply custom filters (manual filtering to avoid double-filter bug)
   const filteredIncidents = useMemo(() => {
-    let result = [...incidents];
+    let result = [...userIncidents];
 
     // Apply search
     if (searchTerm) {
@@ -79,7 +84,7 @@ export const Incidents = () => {
     }
     
     return result;
-  }, [incidents, searchTerm, filters, companies]);
+  }, [userIncidents, searchTerm, filters, companies]);
 
   // Pagination
   const totalItems = filteredIncidents.length;
@@ -88,14 +93,14 @@ export const Incidents = () => {
   const endIndex = Math.min(startIndex + pageSize, totalItems);
   const displayedIncidents = filteredIncidents.slice(startIndex, endIndex);
 
-  // Calculate statistics
+  // Calculate statistics (based on user-visible incidents)
   const stats = useMemo(() => ({
-    total: incidents.length,
-    open: incidents.filter(i => i.status === 'Açık').length,
-    investigating: incidents.filter(i => i.status === 'İnceleniyor').length,
-    closed: incidents.filter(i => i.status === 'Kapalı').length,
-    critical: incidents.filter(i => i.severity === 'Kritik' || i.severity === 'Yüksek').length,
-  }), [incidents]);
+    total: userIncidents.length,
+    open: userIncidents.filter(i => i.status === 'Açık').length,
+    investigating: userIncidents.filter(i => i.status === 'İnceleniyor').length,
+    closed: userIncidents.filter(i => i.status === 'Kapalı').length,
+    critical: userIncidents.filter(i => i.severity === 'Kritik' || i.severity === 'Yüksek').length,
+  }), [userIncidents]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

@@ -5,14 +5,14 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PageTransition } from '../components/layout/PageTransition';
-import { Personnel, PersonnelClass, PersonnelStatus, BloodType, PersonnelRole } from '../types';
+import { Personnel, PersonnelClass, PersonnelStatus, BloodType, PersonnelRole, EducationLevel } from '../types';
 import toast from 'react-hot-toast';
 import {
   Plus, ChevronRight, ChevronLeft, User, Phone, Mail, Calendar, Building2, Shield, Heart,
-  ClipboardList, Award, AlertCircle, Check, X, Info, Lock, Eye, EyeOff, CheckCircle, XCircle
+  ClipboardList, Award, AlertCircle, Check, X, Info, Lock, Eye, EyeOff, CheckCircle, XCircle, FileText
 } from 'lucide-react';
 import { validatePasswordStrength, getPasswordRules } from '../utils/passwordStrength';
-import { validateEmail } from '../utils/passwordStrength';
+import { validateEmail } from '../utils/helpers';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // Grouped roles for better UX
@@ -69,7 +69,29 @@ const PERSONNEL_ROLES: PersonnelRole[] = Object.values(ROLE_GROUPS).flat() as Pe
 
 const CLASSES: PersonnelClass[] = ['A', 'B', 'C'];
 const STATUSES: PersonnelStatus[] = ['Aktif', 'Pasif', 'İstifa Etti'];
-const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+'];
+const BLOOD_TYPES: BloodType[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'];
+const EDUCATION_LEVELS: EducationLevel[] = [
+  'Belirtilmemiş', 'İlkokul', 'Ortaokul', 'Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora',
+];
+
+// Hazır ISG sertifika listesi
+const PRESET_CERTIFICATES = [
+  'Temel İSG Eğitimi',
+  'İlk Yardım Sertifikası',
+  'Yangın Söndürme Eğitimi',
+  'Yüksekte Çalışma Sertifikası',
+  'Elektrik Güvenliği Sertifikası',
+  'Forklift Operatör Belgesi',
+  'Vinç Operatör Belgesi',
+  'Kaynak Güvenliği Sertifikası',
+  'Kimyasal Madde Güvenliği',
+  'Radyasyon Güvenliği Sertifikası',
+  'Kapalı Alan Çalışma Sertifikası',
+  'İş Makinesi Operatör Belgesi',
+  'Gürültü Denetimi Sertifikası',
+  'Kişisel Koruyucu Donanım (KKD) Eğitimi',
+  'Acil Durum Tahliye Ekip Sertifikası',
+];
 
 // İSG Sınıfı gerektiren roller
 const ISG_ROLES: PersonnelRole[] = [
@@ -198,7 +220,7 @@ export const NewPersonnelWizard = () => {
         toast.error('Soyad zorunludur.');
         return;
       }
-      if (!formData.tcNo?.trim() || formData.tcNo.length !== 11) {
+      if (formData.tcNo && formData.tcNo.trim().length > 0 && formData.tcNo.length !== 11) {
         toast.error('TC kimlik numarası 11 haneli olmalıdır.');
         return;
       }
@@ -239,7 +261,7 @@ export const NewPersonnelWizard = () => {
       toast.error('Ad ve soyad zorunludur.');
       return;
     }
-    if (!formData.tcNo?.trim() || formData.tcNo.length !== 11) {
+    if (formData.tcNo && formData.tcNo.trim().length > 0 && formData.tcNo.length !== 11) {
       toast.error('TC kimlik numarası 11 haneli olmalıdır.');
       return;
     }
@@ -403,7 +425,7 @@ export const NewPersonnelWizard = () => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                      TC Kimlik No <span className="text-red-500">*</span>
+                      TC Kimlik No (Opsiyonel)
                     </label>
                     <Input
                       className={inputClass}
@@ -430,12 +452,16 @@ export const NewPersonnelWizard = () => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Eğitim Durumu</label>
-                    <Input
-                      className={inputClass}
-                      placeholder="Örn: Lise, Üniversite, Yüksek Lisans..."
-                      value={formData.education || ''}
-                      onChange={e => setFormData(p => ({ ...p, education: e.target.value }))}
-                    />
+                    <select
+                      className={selectClass}
+                      value={formData.educationLevel || ''}
+                      onChange={e => setFormData(p => ({ ...p, educationLevel: e.target.value as EducationLevel || undefined }))}
+                    >
+                      <option value="">Seçiniz</option>
+                      {EDUCATION_LEVELS.map(level => (
+                        <option key={level} value={level}>{level}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -814,6 +840,85 @@ export const NewPersonnelWizard = () => {
               )}
             </div>
 
+            {/* Sağlık Notları */}
+            <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <ClipboardList className="h-3.5 w-3.5" />
+                Sağlık Notları
+              </label>
+              <textarea
+                className="flex w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-50 transition-all resize-none"
+                rows={3}
+                placeholder="Kronik hastalıklar, ilaç kullanımı, alerjiler veya özel sağlık durumları..."
+                value={formData.healthNotes || ''}
+                onChange={e => setFormData(p => ({ ...p, healthNotes: e.target.value }))}
+              />
+            </div>
+
+            {/* Sağlık Raporu PDF */}
+            <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5" />
+                Sağlık Raporu (PDF)
+              </label>
+              {formData.healthReportBase64 ? (
+                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 rounded-xl px-4 py-3 border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">{formData.healthReportFileName}</p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">PDF yüklendi</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = formData.healthReportBase64!;
+                        link.download = formData.healthReportFileName || 'saglik-raporu.pdf';
+                        link.click();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-colors"
+                    >
+                      İndir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, healthReportBase64: undefined, healthReportFileName: undefined }))}
+                      className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/40 text-xs font-semibold text-red-700 dark:text-red-300 hover:bg-red-200 transition-colors"
+                    >
+                      Kaldır
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center cursor-pointer border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-8 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors group">
+                  <FileText className="h-8 w-8 text-slate-300 dark:text-slate-600 group-hover:text-indigo-400 transition-colors mb-2" />
+                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">PDF dosyası seçin</p>
+                  <p className="text-xs text-slate-400 mt-1">Sağlık raporunu buraya yükleyin</p>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        setFormData(p => ({
+                          ...p,
+                          healthReportBase64: ev.target?.result as string,
+                          healthReportFileName: file.name,
+                        }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
             {/* Tıbbi Muayene Bilgisi */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
@@ -846,11 +951,47 @@ export const NewPersonnelWizard = () => {
               </div>
             </div>
 
-            {/* Sertifika Ekleme */}
+            {/* Hazır Sertifika Hızlı Seçim */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
                 <Award className="h-3.5 w-3.5" />
-                Sertifika Ekle
+                Hızlı Sertifika Seçimi
+              </h3>
+              <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Aşağıdan bir veya birden fazla sertifika seçin:</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_CERTIFICATES.map(cert => {
+                    const isAdded = (formData.certifications || []).includes(cert);
+                    return (
+                      <button
+                        key={cert}
+                        type="button"
+                        onClick={() => {
+                          if (isAdded) {
+                            setFormData(p => ({ ...p, certifications: (p.certifications || []).filter(c => c !== cert) }));
+                          } else {
+                            setFormData(p => ({ ...p, certifications: [...(p.certifications || []), cert] }));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                          isAdded
+                            ? 'bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-200 dark:shadow-amber-900/30'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-400'
+                        }`}
+                      >
+                        {isAdded ? <><Check className="h-3 w-3 inline mr-1" />{cert}</> : cert}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Manuel Sertifika Ekleme */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                <Plus className="h-3.5 w-3.5" />
+                Manuel Ekle
               </h3>
               <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
                 <div className="flex gap-3">

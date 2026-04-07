@@ -176,7 +176,7 @@ const mockPersonnel: Personnel[] = [
     assignedCompanyId: '1',
     phone: '0555 111 22 33',
     email: 'mehmet.kaya@hantech.com',
-    startDate: '2023-01-15',
+    startDate: '2026-01-15',
   },
   {
     id: '2',
@@ -187,7 +187,7 @@ const mockPersonnel: Personnel[] = [
     assignedCompanyId: '2',
     phone: '0544 444 55 66',
     email: 'zeynep.celik@hantech.com',
-    startDate: '2023-03-01',
+    startDate: '2026-03-01',
   },
 ];
 
@@ -196,7 +196,7 @@ const mockIncidents: Incident[] = [
     id: '1',
     title: 'İskeleden Düşme Tehlikesi',
     description: 'B blok 3. katta iskele korkuluğunun gevşemesi sonucu ramak kala olayı yaşandı.',
-    date: '2023-10-25T10:30:00',
+    date: '2026-03-15T10:30:00',
     companyId: '1',
     personnelId: '1',
     severity: 'Yüksek',
@@ -438,6 +438,7 @@ export const useStore = create<AppState>()(
         trainings: state.trainings,
         ppes: state.ppes,
         risks: state.risks,
+        certificates: state.certificates,
         isDarkMode: state.isDarkMode,
         systemSettings: state.systemSettings,
         notificationSettings: state.notificationSettings,

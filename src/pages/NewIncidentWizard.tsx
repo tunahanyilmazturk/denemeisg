@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { Incident, IncidentPhoto, Severity, IncidentStatus, IncidentType, InjuryType, SeverityLevel, BodyPart } from '../types';
 import { PageTransition } from '../components/layout/PageTransition';
 import { Button } from '../components/ui/Button';
@@ -106,6 +107,7 @@ const StepItem = ({ num, label, active, completed }: { num: number; label: strin
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export const NewIncidentWizard = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const {
     companies,
     personnel,
@@ -254,6 +256,7 @@ export const NewIncidentWizard = () => {
         ...formData,
         photos: incidentPhotos.length > 0 ? incidentPhotos : undefined,
         id: newId,
+        createdBy: user?.id,
         createdAt: new Date().toISOString(),
       } as Incident);
 

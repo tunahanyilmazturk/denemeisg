@@ -1371,11 +1371,11 @@ export const CompanyDetail = () => {
               <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                 <div className="space-y-2">
                   {[
-                    { name: 'İSG Yıllık Raporu 2024.pdf', date: '2024-03-15', size: '2.4 MB', type: 'PDF' },
-                    { name: 'İş Sağlığı Sözleşmesi.docx', date: '2024-03-10', size: '156 KB', type: 'DOCX' },
-                    { name: 'Risk Değerlendirme Formu.xlsx', date: '2024-03-05', size: '892 KB', type: 'XLSX' },
-                    { name: 'İşyeri Hekimi Raporu.pdf', date: '2024-02-28', size: '1.1 MB', type: 'PDF' },
-                    { name: 'Acil Durum Planı.pdf', date: '2024-02-20', size: '3.2 MB', type: 'PDF' },
+                    { name: 'İSG Yıllık Raporu 2026.pdf', date: '2026-03-15', size: '2.4 MB', type: 'PDF' },
+                    { name: 'İş Sağlığı Sözleşmesi.docx', date: '2026-03-10', size: '156 KB', type: 'DOCX' },
+                    { name: 'Risk Değerlendirme Formu.xlsx', date: '2026-03-05', size: '892 KB', type: 'XLSX' },
+                    { name: 'İşyeri Hekimi Raporu.pdf', date: '2026-02-28', size: '1.1 MB', type: 'PDF' },
+                    { name: 'Acil Durum Planı.pdf', date: '2026-02-20', size: '3.2 MB', type: 'PDF' },
                   ].map((doc, idx) => (
                     <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all group cursor-pointer">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${

@@ -5,9 +5,10 @@ import { motion } from 'motion/react';
 import {
   BarChart3, PieChart as PieChartIcon, TrendingUp, Users, Building2,
   AlertTriangle, GraduationCap, HardHat, ShieldAlert, Calendar,
-  Download, FileText, ChevronDown, ArrowUpRight, ArrowDownRight,
+  Download, FileText, ArrowUpRight, ArrowDownRight,
   Activity, CheckCircle2, Clock, XCircle, Target, Zap, Package, UserCheck,
-  AlertCircle, Award, Eye, Grid3x3, Percent, Timer, CalendarDays, Filter, Table2
+  AlertCircle, Eye, Grid3x3, Percent, Timer, CalendarDays, Filter, Table2,
+  Lightbulb, LineChart as LineChartIcon
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -33,7 +34,6 @@ export const Reports = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const isDark = isDarkMode;
   const chartTextColor = isDark ? '#9ca3af' : '#4b5563';
@@ -347,6 +347,130 @@ export const Reports = () => {
     return matrix;
   }, [filteredData.risks]);
 
+  // 12-Month Trend for Correlation Analysis
+  const twelveMonthTrendData = useMemo(() => {
+    const months: Record<string, { incidents: number; trainings: number; risks: number }> = {};
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' });
+      months[key] = { incidents: 0, trainings: 0, risks: 0 };
+    }
+    filteredData.incidents.forEach(inc => {
+      const key = new Date(inc.date).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' });
+      if (months[key] !== undefined) months[key].incidents++;
+    });
+    filteredData.trainings.forEach(tr => {
+      const key = new Date(tr.date).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' });
+      if (months[key] !== undefined) months[key].trainings++;
+    });
+    filteredData.risks.forEach(r => {
+      const key = new Date(r.date).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' });
+      if (months[key] !== undefined) months[key].risks++;
+    });
+    return Object.entries(months).map(([name, data]) => ({ name, ...data }));
+  }, [filteredData.incidents, filteredData.trainings, filteredData.risks]);
+
+  // Period Comparison (current period vs prior equal period)
+  const periodComparison = useMemo(() => {
+    let currentDays = 30;
+    if (dateRange === '7') currentDays = 7;
+    else if (dateRange === '30') currentDays = 30;
+    else if (dateRange === '90') currentDays = 90;
+    else if (dateRange === '365') currentDays = 365;
+
+    const now = new Date();
+    const currentStart = new Date();
+    currentStart.setDate(now.getDate() - currentDays);
+    const priorEnd = new Date(currentStart);
+    const priorStart = new Date();
+    priorStart.setDate(now.getDate() - currentDays * 2);
+
+    const isInCurrent = (ds: string) => { const d = new Date(ds); return d >= currentStart && d <= now; };
+    const isInPrior = (ds: string) => { const d = new Date(ds); return d >= priorStart && d <= priorEnd; };
+
+    let srcIncidents = selectedCompanyId !== 'all' ? incidents.filter(i => i.companyId === selectedCompanyId) : incidents;
+    const companyPersonnelIds = selectedCompanyId !== 'all' ? personnel.filter(p => p.assignedCompanyId === selectedCompanyId).map(p => p.id) : personnel.map(p => p.id);
+    let srcTrainings = selectedCompanyId !== 'all' ? trainings.filter(t => t.participants.some(id => companyPersonnelIds.includes(id))) : trainings;
+    let srcRisks = risks;
+
+    const calcChange = (cur: number, pri: number) => pri === 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - pri) / pri) * 100);
+
+    const curInc = srcIncidents.filter(i => isInCurrent(i.date || i.createdAt)).length;
+    const priInc = srcIncidents.filter(i => isInPrior(i.date || i.createdAt)).length;
+    const curTr = srcTrainings.filter(t => isInCurrent(t.date || t.createdAt)).length;
+    const priTr = srcTrainings.filter(t => isInPrior(t.date || t.createdAt)).length;
+    const curRisk = srcRisks.filter(r => isInCurrent(r.date)).length;
+    const priRisk = srcRisks.filter(r => isInPrior(r.date)).length;
+
+    const periodLabel =
+      dateRange === '7' ? '7 günlük' :
+      dateRange === '90' ? '90 günlük' :
+      dateRange === '365' ? '1 yıllık' : '30 günlük';
+
+    return {
+      incidents: { current: curInc, prior: priInc, change: calcChange(curInc, priInc) },
+      trainings: { current: curTr, prior: priTr, change: calcChange(curTr, priTr) },
+      risks: { current: curRisk, prior: priRisk, change: calcChange(curRisk, priRisk) },
+      periodLabel,
+    };
+  }, [selectedCompanyId, dateRange, incidents, trainings, risks, personnel]);
+
+  // KPI Targets
+  const kpiData = useMemo(() => {
+    const incidentClosureRate = stats.totalIncidents > 0 ? Math.round((stats.closedIncidents / stats.totalIncidents) * 100) : 100;
+    const trainingCompletionRate = stats.totalTrainings > 0 ? Math.round((stats.completedTrainings / stats.totalTrainings) * 100) : 0;
+    const riskResolutionRate = stats.totalRisks > 0 ? Math.round((stats.resolvedRisks / stats.totalRisks) * 100) : 0;
+    const ppeActiveRate = stats.totalPPEs > 0 ? Math.round((stats.activePPEs / stats.totalPPEs) * 100) : 0;
+    const criticalIncidentRate = stats.totalIncidents > 0 ? Math.round(((stats.totalIncidents - stats.criticalIncidents) / stats.totalIncidents) * 100) : 100;
+
+    return [
+      { id: 'incident_closure', label: 'Olay Kapanış Oranı', current: incidentClosureRate, target: 90, unit: '%', icon: AlertTriangle, colorClass: 'from-rose-500 to-red-600', barOk: incidentClosureRate >= 90, barMid: incidentClosureRate >= 70 },
+      { id: 'training_completion', label: 'Eğitim Tamamlanma', current: trainingCompletionRate, target: 80, unit: '%', icon: GraduationCap, colorClass: 'from-emerald-500 to-teal-600', barOk: trainingCompletionRate >= 80, barMid: trainingCompletionRate >= 60 },
+      { id: 'risk_resolution', label: 'Risk Giderme Oranı', current: riskResolutionRate, target: 75, unit: '%', icon: ShieldAlert, colorClass: 'from-amber-500 to-orange-600', barOk: riskResolutionRate >= 75, barMid: riskResolutionRate >= 50 },
+      { id: 'ppe_active', label: 'KKD Aktiflik Oranı', current: ppeActiveRate, target: 85, unit: '%', icon: HardHat, colorClass: 'from-indigo-500 to-purple-600', barOk: ppeActiveRate >= 85, barMid: ppeActiveRate >= 65 },
+      { id: 'non_critical_rate', label: 'Kritik Olmayan Olay', current: criticalIncidentRate, target: 80, unit: '%', icon: CheckCircle2, colorClass: 'from-sky-500 to-blue-600', barOk: criticalIncidentRate >= 80, barMid: criticalIncidentRate >= 60 },
+    ];
+  }, [stats, filteredData.ppes]);
+
+  // Auto-generated Insights
+  const insights = useMemo(() => {
+    const results: { type: 'warning' | 'success' | 'info' | 'danger'; title: string; message: string }[] = [];
+
+    if (stats.totalIncidents > 0) {
+      const criticalRate = (stats.criticalIncidents / stats.totalIncidents) * 100;
+      if (criticalRate > 20) results.push({ type: 'danger', title: 'Yüksek Kritik Olay Oranı', message: `Olayların %${Math.round(criticalRate)}'i kritik seviyede. Acil önlem alınması önerilir.` });
+      const openRate = (stats.openIncidents / stats.totalIncidents) * 100;
+      if (openRate > 40) results.push({ type: 'warning', title: 'Açık Olay Oranı Yüksek', message: `Toplam olayların %${Math.round(openRate)}'i hâlâ açık durumda. Kapanış süreçleri hızlandırılmalı.` });
+      if (stats.closedIncidents / stats.totalIncidents > 0.8) results.push({ type: 'success', title: 'Olay Yönetimi Başarılı', message: `Olayların %${Math.round((stats.closedIncidents / stats.totalIncidents) * 100)}'i kapatılmış. Mükemmel bir olay yönetimi performansı!` });
+    }
+
+    if (stats.totalTrainings > 0) {
+      const cr = (stats.completedTrainings / stats.totalTrainings) * 100;
+      if (cr < 60) results.push({ type: 'warning', title: 'Düşük Eğitim Tamamlanma', message: `Eğitimlerin yalnızca %${Math.round(cr)}'i tamamlandı. Eğitim planlaması gözden geçirilmeli.` });
+      else if (cr >= 85) results.push({ type: 'success', title: 'Yüksek Eğitim Tamamlanma', message: `Eğitimlerin %${Math.round(cr)}'i başarıyla tamamlandı. Personel katılımı çok iyi seviyede.` });
+    }
+
+    if (stats.totalRisks > 0) {
+      const highRate = (stats.highRisks / stats.totalRisks) * 100;
+      if (highRate > 30) results.push({ type: 'danger', title: 'Yüksek Risk Yoğunluğu', message: `Risklerin %${Math.round(highRate)}'i yüksek seviyede. Risk azaltma önlemleri acilen gözden geçirilmeli.` });
+      const resolveRate = (stats.resolvedRisks / stats.totalRisks) * 100;
+      if (resolveRate > 70) results.push({ type: 'success', title: 'İyi Risk Giderme Performansı', message: `Risklerin %${Math.round(resolveRate)}'i giderilmiş. Risk yönetimi süreci etkin işliyor.` });
+    }
+
+    if (stats.totalPPEs > 0) {
+      const wornRate = (filteredData.ppes.filter(p => p.status === 'Yıprandı/Kayıp').length / stats.totalPPEs) * 100;
+      if (wornRate > 15) results.push({ type: 'warning', title: 'KKD Yenileme Gerekiyor', message: `KKD'lerin %${Math.round(wornRate)}'i yıpranmış veya kayıp. Stok yenileme planlanmalıdır.` });
+    }
+
+    if (periodComparison.incidents.change > 20) results.push({ type: 'warning', title: 'Olay Sayısında Artış Trendi', message: `Önceki ${periodComparison.periodLabel} döneme kıyasla olay sayısı %${periodComparison.incidents.change} arttı.` });
+    else if (periodComparison.incidents.change < -10) results.push({ type: 'success', title: 'Olay Sayısında Olumlu Trend', message: `Olay sayısı önceki döneme kıyasla %${Math.abs(periodComparison.incidents.change)} azaldı. Güvenlik önlemleri işe yarıyor!` });
+
+    if (results.length === 0) results.push({ type: 'info', title: 'Veriler Normal Seyrediyor', message: 'Tüm İSG göstergeleri kabul edilebilir aralıkta görünmektedir. İyi çalışmalar!' });
+
+    return results;
+  }, [stats, filteredData.ppes, periodComparison]);
+
   const handleExportPDF = () => {
     const data = [
       ['Toplam Firma', String(stats.totalCompanies)],
@@ -603,14 +727,7 @@ export const Reports = () => {
             </select>
             <select
               value={dateRange}
-              onChange={(e) => {
-                setDateRange(e.target.value);
-                if (e.target.value !== 'custom') {
-                  setShowDatePicker(false);
-                } else {
-                  setShowDatePicker(true);
-                }
-              }}
+              onChange={(e) => setDateRange(e.target.value)}
               className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-200"
             >
               <option value="all">Tüm Zamanlar</option>
@@ -622,12 +739,7 @@ export const Reports = () => {
             </select>
             
             {dateRange === 'custom' && (
-              <motion.div
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                className="flex items-center gap-2"
-              >
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
                   <CalendarDays className="h-4 w-4 text-slate-400" />
                   <input
@@ -651,7 +763,7 @@ export const Reports = () => {
                     {Math.ceil((new Date(customEndDate).getTime() - new Date(customStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} gün
                   </span>
                 )}
-              </motion.div>
+              </div>
             )}
           </div>
         </div>
@@ -660,6 +772,10 @@ export const Reports = () => {
         <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto pb-px">
           {[
             { id: 'overview', label: 'Genel Bakış', icon: BarChart3 },
+            { id: 'comparison', label: 'Dönem Karş.', icon: TrendingUp },
+            { id: 'insights', label: 'İçgörüler', icon: Lightbulb },
+            { id: 'kpi', label: 'KPI Takibi', icon: Target },
+            { id: 'correlation', label: 'Korelasyon', icon: LineChartIcon },
             { id: 'incidents', label: 'Olay Analizi', icon: AlertTriangle },
             { id: 'trainings', label: 'Eğitim Raporu', icon: GraduationCap },
             { id: 'personnel', label: 'Personel Analizi', icon: Users },
@@ -680,6 +796,285 @@ export const Reports = () => {
             </button>
           ))}
         </div>
+
+        {/* Comparison Tab */}
+        {activeTab === 'comparison' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-display font-semibold text-slate-900 dark:text-white">
+                  Dönemsel Karşılaştırma
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                  Seçili {periodComparison.periodLabel} dönem ile önceki benzer dönemin karşılaştırması
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {[
+                { label: 'Olaylar', icon: AlertTriangle, ...periodComparison.incidents, color: periodComparison.incidents.change > 0 ? 'red' : periodComparison.incidents.change < 0 ? 'emerald' : 'gray' },
+                { label: 'Eğitimler', icon: GraduationCap, ...periodComparison.trainings, color: periodComparison.trainings.change >= 0 ? 'emerald' : 'red' },
+                { label: 'Riskler', icon: ShieldAlert, ...periodComparison.risks, color: periodComparison.risks.change < 0 ? 'emerald' : periodComparison.risks.change > 0 ? 'red' : 'gray' },
+              ].map((item) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2.5 rounded-xl bg-${item.color}-100 dark:bg-${item.color}-900/30`}>
+                        <item.icon className={`h-5 w-5 text-${item.color}-600 dark:text-${item.color}-400`} />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{item.label}</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                          {item.current}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-lg text-sm font-medium ${
+                      item.change > 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      item.change < 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                    }`}>
+                      {item.change > 0 ? '+' : ''}{item.change}%
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Önceki dönem</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{item.prior} kayıt</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Insights Tab */}
+        {activeTab === 'insights' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-display font-semibold text-slate-900 dark:text-white">
+                Yapay Zeka Destekli İçgörüler
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                Veri analizi temelli otomatik öneriler ve uyarılar
+              </p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {insights.map((insight, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`p-5 rounded-2xl border-l-4 ${
+                    insight.type === 'danger' ? 'bg-red-50 border-red-500 dark:bg-red-900/20 dark:border-red-500' :
+                    insight.type === 'warning' ? 'bg-amber-50 border-amber-500 dark:bg-amber-900/20 dark:border-amber-500' :
+                    insight.type === 'success' ? 'bg-emerald-50 border-emerald-500 dark:bg-emerald-900/20 dark:border-emerald-500' :
+                    'bg-sky-50 border-sky-500 dark:bg-sky-900/20 dark:border-sky-500'
+                  } shadow-sm`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      insight.type === 'danger' ? 'bg-red-200 dark:bg-red-800/50' :
+                      insight.type === 'warning' ? 'bg-amber-200 dark:bg-amber-800/50' :
+                      insight.type === 'success' ? 'bg-emerald-200 dark:bg-emerald-800/50' :
+                      'bg-sky-200 dark:bg-sky-800/50'
+                    }`}>
+                      {insight.type === 'danger' ? <AlertTriangle className="h-5 w-5 text-red-700 dark:text-red-300" /> :
+                       insight.type === 'warning' ? <AlertCircle className="h-5 w-5 text-amber-700 dark:text-amber-300" /> :
+                       insight.type === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-300" /> :
+                       <Lightbulb className="h-5 w-5 text-sky-700 dark:text-sky-300" />}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold text-sm mb-1 ${
+                        insight.type === 'danger' ? 'text-red-900 dark:text-red-100' :
+                        insight.type === 'warning' ? 'text-amber-900 dark:text-amber-100' :
+                        insight.type === 'success' ? 'text-emerald-900 dark:text-emerald-100' :
+                        'text-sky-900 dark:text-sky-100'
+                      }`}>
+                        {insight.title}
+                      </h4>
+                      <p className={`text-sm leading-relaxed ${
+                        insight.type === 'danger' ? 'text-red-700 dark:text-red-200' :
+                        insight.type === 'warning' ? 'text-amber-700 dark:text-amber-200' :
+                        insight.type === 'success' ? 'text-emerald-700 dark:text-emerald-200' :
+                        'text-sky-700 dark:text-sky-200'
+                      }`}>
+                        {insight.message}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* KPI Tab */}
+        {activeTab === 'kpi' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-display font-semibold text-slate-900 dark:text-white">
+                KPI Performans Göstergeleri
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                Hedefe yönelik performans takibi
+              </p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {kpiData.map((kpi) => (
+                <motion.div
+                  key={kpi.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2.5 rounded-xl bg-gradient-to-br ${kpi.colorClass}`}>
+                        <kpi.icon className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{kpi.label}</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {kpi.current}{kpi.unit}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                      kpi.current >= kpi.target ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      kpi.current >= kpi.target * 0.7 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                      Hedef: {kpi.target}{kpi.unit}
+                    </div>
+                  </div>
+                  <div className="relative h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((kpi.current / kpi.target) * 100, 100)}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                      className={`h-full rounded-full ${
+                        kpi.current >= kpi.target ? 'bg-emerald-500' :
+                        kpi.current >= kpi.target * 0.7 ? 'bg-amber-500' :
+                        'bg-red-500'
+                      }`}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>{kpi.current >= kpi.target ? 'Hedefe ulaşıldı ✓' : `%${Math.round((kpi.current / kpi.target) * 100)} tamamlandı`}</span>
+                    {kpi.current < kpi.target && (
+                      <span className="font-medium text-amber-600 dark:text-amber-400">
+                        %{kpi.target - kpi.current} daha gerekli
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Correlation Tab */}
+        {activeTab === 'correlation' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-display font-semibold text-slate-900 dark:text-white">
+                Etkileşim Analizi
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                Olay, Eğitim ve Risk verilerinin korelasyonu (12 aylık)
+              </p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-rose-500 to-red-600">
+                    <AlertTriangle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Olay-Eğitim İlişkisi</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white mt-0.5">
+                      {stats.totalTrainings > 0 ? (Math.round(stats.totalIncidents / stats.totalTrainings * 100) / 100).toFixed(2) : '0'} olay/ eğitim
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Her eğitime düşen ortalama olay sayısı
+                </p>
+              </div>
+              <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600">
+                    <ShieldAlert className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Risk-Olay İlişkisi</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white mt-0.5">
+                      {stats.totalRisks > 0 ? (Math.round(stats.totalIncidents / stats.totalRisks * 100) / 100).toFixed(2) : '0'} olay/ risk
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Her risk için gerçekleşen olay oranı
+                </p>
+              </div>
+              <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600">
+                    <GraduationCap className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Eğitim Risk Etkisi</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white mt-0.5">
+                      {stats.totalTrainings > 0 ? (Math.round(stats.totalTrainingHours / stats.totalRisks * 100) / 100).toFixed(1) : '0'} saat/ risk
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Her risk için ayrılan eğitim saati
+                </p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-[#09090b] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <h3 className="text-lg font-display font-semibold text-slate-900 dark:text-white mb-4">
+                12 Aylık Trend Karşılaştırması
+              </h3>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={twelveMonthTrendData}>
+                    <defs>
+                      <linearGradient id="incGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="trGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="rkGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#e2e8f0'} />
+                    <XAxis dataKey="name" stroke={chartTextColor} tick={{ fill: chartTextColor }} />
+                    <YAxis stroke={chartTextColor} tick={{ fill: chartTextColor }} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend />
+                    <Area type="monotone" dataKey="incidents" name="Olaylar" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#incGrad)" />
+                    <Area type="monotone" dataKey="trainings" name="Eğitimler" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#trGrad)" />
+                    <Area type="monotone" dataKey="risks" name="Riskler" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#rkGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
@@ -1001,7 +1396,7 @@ export const Reports = () => {
                       <PieChart>
                         <Pie data={trainingStatusData} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={5} dataKey="value"
                           label={({ name, value }) => `${name}: ${value}`}>
-                          {trainingStatusData.map((entry, index) => (
+                          {trainingStatusData.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>

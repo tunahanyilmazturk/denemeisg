@@ -3,9 +3,11 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Building2, AlertTriangle, GraduationCap, ShieldAlert } from 'lucide-react';
 import { cn } from '../ui/Button';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useStore } from '../../store/useStore';
 
 export const MobileNav = () => {
   const { user } = useAuthStore();
+  const { isDarkMode } = useStore();
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   const navItems = [
@@ -18,7 +20,15 @@ export const MobileNav = () => {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-lg">
-      <div className="flex items-center justify-around px-2 py-2 safe-area-inset-bottom">
+      <div className="flex items-center justify-around px-2 py-1.5 safe-area-inset-bottom">
+        {/* Logo center pill */}
+        <div className="absolute left-1/2 -translate-x-1/2 -top-5 w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg flex items-center justify-center p-1.5">
+          <img
+            src={isDarkMode ? '/logo/logodark.png' : '/logo/logo.png'}
+            alt="HanTech Logo"
+            className="w-full h-full object-contain"
+          />
+        </div>
         {navItems.filter(item => item.show).map((item) => (
           <NavLink
             key={item.path}

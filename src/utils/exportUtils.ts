@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Company, Personnel, Incident, Training, PPE, Risk } from '../types';
-import { t, PDF_COLORS, addPdfHeader, addPdfFooter, formatDate, formatDateTime, formatShortDate } from './turkishPdfHelper';
+import { t, PDF_COLORS, addPdfHeader, formatDate, formatDateTime } from './turkishPdfHelper';
 
 // ============================================================================
 // PDF EXPORT - TURKISH CHARACTER SUPPORT
@@ -106,26 +106,6 @@ interface ExcelColumn {
   width?: number;
 }
 
-
-// Helper function to apply column widths
-const setColumnWidths = (worksheet: XLSX.WorkSheet, columns: ExcelColumn[]) => {
-  const wscols = columns.map(col => ({ wch: col.width || 15 }));
-  worksheet['!cols'] = wscols;
-};
-
-// Helper function to style header row
-const styleHeaderRow = (worksheet: XLSX.WorkSheet, lastCol: string) => {
-  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-  for (let C = range.s.c; C <= range.e.c; ++C) {
-    const address = XLSX.utils.encode_col(C) + '1';
-    if (!worksheet[address]) continue;
-    worksheet[address].s = {
-      font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "4F46E5" } },
-      alignment: { horizontal: "center", vertical: "center" }
-    };
-  }
-};
 
 // ============================================================================
 // OVERVIEW REPORT EXPORT
